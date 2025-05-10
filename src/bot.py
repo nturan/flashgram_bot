@@ -1,5 +1,6 @@
 import os
 import logging
+import sys
 from dotenv import load_dotenv
 from telegram import Update, ForceReply
 from telegram.ext import (
@@ -39,20 +40,23 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application and pass it your bot's token
-    application = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+    # Get environment variables
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
 
-    # on different commands - anser in Telegram
+    if not token:
+        logger.error("No token provided!")
+        sys.exit(1)
+
+    # Create the Application
+    application = Application.builder().token(token).build()
+
+    # Add handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-
-    # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
-    # Run the bot until the user presses Control-C
+    # Start the Bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-
 
 if __name__ == "__main__":
     main()
