@@ -1,14 +1,16 @@
+import threading
+import uvicorn
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from contextlib import asynccontextmanager
+from telegram import Update
+from my_telegram.bot import init_application
+from config import settings
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
+# Initialize FastAPI app
+app = FastAPI(title=settings.app_name)
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,3 +22,21 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"Hello": "World!"}
+
+# Function to run FastAPI server
+def run_fastapi():
+    uvicorn.run(app, host="0.0.0.0", port=8080, reload=False)
+
+# Main async function to start the Telegram bot
+def start_bot():
+    bot = init_application(settings.token)
+    bot.run_polling(allowed_updates=Update.ALL_TYPES)
+
+# Entry point
+if __name__ == "__main__":
+    # Start FastAPI server in background thread
+    thread = threading.Thread(target=run_fastapi, daemon=True)
+    thread.start()
+
+    # Run the Telegram bot in the main thread
+    start_bot()

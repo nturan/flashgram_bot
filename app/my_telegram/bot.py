@@ -1,7 +1,3 @@
-import os
-import logging
-import sys
-from dotenv import load_dotenv
 from telegram import Update, ForceReply
 from telegram.ext import (
     Application,
@@ -10,17 +6,6 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
-
-# Load environment variables
-load_dotenv()
-
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logger = logging.getLogger(__name__)
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
@@ -38,15 +23,8 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     await update.message.reply_text(update.message.text)
 
-def main() -> None:
+def init_application(token: str) -> Application:
     """Start the bot."""
-    # Get environment variables
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-
-    if not token:
-        logger.error("No token provided!")
-        sys.exit(1)
-
     # Create the Application
     application = Application.builder().token(token).build()
 
@@ -55,8 +33,6 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
+    return application
     # Start the Bot
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == "__main__":
-    main()
+    # application.run_polling(allowed_updates=Update.ALL_TYPES)

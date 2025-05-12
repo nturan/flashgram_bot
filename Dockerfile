@@ -13,4 +13,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Command to run the bot directly
-CMD ["python", "-m", "src.bot"]
+CMD ["python", "app/main.py"]
