@@ -11,6 +11,7 @@ COPY . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# Command to run the bot directly
-CMD ["python", "app/main.py"]
+# Command to run the bot using the run script
+CMD ["python", "-m", "run"]

@@ -4,8 +4,11 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
-from my_telegram.bot import init_application
-from config import settings
+from pydantic import SecretStr
+
+from app.my_telegram.bot import init_application
+from app.my_graph.language_tutor import RussianTutor
+from app.config import settings, logger
 
 # Initialize FastAPI app
 app = FastAPI(title=settings.app_name)
@@ -19,9 +22,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize RussianTutor
+russian_tutor = RussianTutor(
+    api_key=SecretStr(settings.openai_api_key),
+    model=settings.llm_model
+)
+
 @app.get("/")
 def read_root():
     return {"Hello": "World!"}
+
+@app.get("/api/analyze/{word}")
+async def analyze_word(word: str):
+    """API endpoint to analyze a Russian word"""
+    try:
+        result = russian_tutor.invoke(word)
+        return result
+    except Exception as e:
+        logger.error(f"Error analyzing word via API: {str(e)}")
+        return {"error": "Failed to analyze word"}
 
 # Function to run FastAPI server
 def run_fastapi():
@@ -29,7 +48,9 @@ def run_fastapi():
 
 # Main async function to start the Telegram bot
 def start_bot():
-    bot = init_application(settings.token)
+    # Initialize the bot with the Russian tutor
+    bot = init_application(settings.token, russian_tutor)
+    logger.info("Starting Telegram bot...")
     bot.run_polling(allowed_updates=Update.ALL_TYPES)
 
 # Entry point
@@ -37,6 +58,7 @@ if __name__ == "__main__":
     # Start FastAPI server in background thread
     thread = threading.Thread(target=run_fastapi, daemon=True)
     thread.start()
+    logger.info("FastAPI server started in background")
 
     # Run the Telegram bot in the main thread
     start_bot()
