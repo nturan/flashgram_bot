@@ -11,12 +11,14 @@ from langchain_openai import ChatOpenAI
 from app.my_graph.prompts import (
   initial_classification_prompt,
   get_noun_grammar_prompt,
+  get_adjective_grammar_prompt,
 )
 
 class State(TypedDict):
     original_human_input: str
     classification: Optional[Dict]
     noun_grammar: Optional[str]
+    adjective_grammar: Optional[str]
     final_answer: Optional[str]
 
 # Define word types as a type alias instead of a class
@@ -34,6 +36,12 @@ class RussianTutor:
 
         self.get_noun_grammar_chain: RunnableSerializable[dict[Any, Any], str] = (
             get_noun_grammar_prompt
+            | self.llm
+            | StrOutputParser()
+        )
+
+        self.get_adjective_grammar_chain: RunnableSerializable[dict[Any, Any], str] = (
+            get_adjective_grammar_prompt
             | self.llm
             | StrOutputParser()
         )
@@ -104,6 +112,25 @@ class RussianTutor:
             "final_answer": result
         }
 
+    def get_adjective_grammar(
+            self, state: State, writer: Optional[StreamWriter] = None, config: Optional[RunnableConfig] = None,
+    ) -> State:
+        """Get grammar details for a Russian adjective"""
+        if writer and hasattr(writer, 'write'):
+            writer.write("Getting adjective grammar details...\n")
+
+        word = state.get("classification", {}).get("russian_word", state["original_human_input"])
+
+        result: str = self.get_adjective_grammar_chain.invoke(
+            {"word": word}, config=config
+        )
+
+        return {
+            **state,
+            "adjective_grammar": result,
+            "final_answer": result
+        }
+
     def _build_graph(self) -> RunnableSerializable:
         """Build the LangGraph for the Russian language tutor"""
 
@@ -112,6 +139,7 @@ class RussianTutor:
         # Define the nodes
         workflow.add_node("initial_classification", self.initial_classification)
         workflow.add_node("get_noun_grammar", self.get_noun_grammar)
+        workflow.add_node("get_adjective_grammar", self.get_adjective_grammar)
 
         # Define the edges
         workflow.add_edge(START, "initial_classification")
@@ -122,9 +150,9 @@ class RussianTutor:
             lambda state: state.get("classification", {}).get("word_type", "noun"),
             {
                 "noun": "get_noun_grammar",
+                "adjective": "get_adjective_grammar",
                 # Add more word types and handlers here as you implement them
                 # "verb": "get_verb_grammar",
-                # "adjective": "get_adjective_grammar",
                 # Default to end for any word type without a specific handler
                 "__default__": END
             }
@@ -132,6 +160,9 @@ class RussianTutor:
 
         # Connect noun grammar to END
         workflow.add_edge("get_noun_grammar", END)
+
+        # Connect adjective grammar to END
+        workflow.add_edge("get_adjective_grammar", END)
 
         return workflow.compile()
 
@@ -147,6 +178,7 @@ class RussianTutor:
             "original_human_input": input_text,
             "classification": None,
             "noun_grammar": None,
+            "adjective_grammar": None,
             "final_answer": None
         }
 

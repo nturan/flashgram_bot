@@ -22,7 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
-        rf"Hi {user.mention_html()}! I'm a Russian language tutor bot. Send me a Russian noun, and I'll analyze its grammar for you.",
+        rf"Hi {user.mention_html()}! I'm a Russian language tutor bot. Send me a Russian noun or adjective, and I'll analyze its grammar for you.",
         reply_markup=ForceReply(selective=True)
     )
 
@@ -30,8 +30,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Send a message when the command /help is issued."""
     await update.message.reply_text(
         "I can help you learn Russian grammar!\n\n"
-        "Just send me a Russian noun, and I'll tell you all about its gender, cases, and forms.\n\n"
-        "For example, try sending me 'книга' (book) or 'стол' (table)."
+        "Just send me a Russian word, and I'll analyze it for you:\n\n"
+        "• For nouns: I'll show gender, animacy, and all case forms\n"
+        "• For adjectives: I'll show all gender forms, cases, and special forms\n\n"
+        "Examples to try:\n"
+        "- 'книга' (book) or 'стол' (table) for nouns\n"
+        "- 'красивый' (beautiful) or 'хороший' (good) for adjectives"
     )
 
 async def process_russian_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -50,34 +54,97 @@ async def process_russian_word(update: Update, context: ContextTypes.DEFAULT_TYP
             try:
                 grammar_data = json.loads(result["final_answer"])
 
-                # Format a nice response for the user
-                response = (
-                    f"📝 *Word:* {grammar_data['dictionary_form']}\n"
-                    f"🔤 *Gender:* {grammar_data['gender']}\n"
-                    f"🧬 *Animacy:* {'Animate' if grammar_data['animacy'] else 'Inanimate'}\n"
-                    f"🇬🇧 *English:* {grammar_data['english_translation']}\n\n"
-                    f"*Singular Forms:*\n"
-                    f"• Nom: {grammar_data['singular']['nom']}\n"
-                    f"• Gen: {grammar_data['singular']['gen']}\n"
-                    f"• Dat: {grammar_data['singular']['dat']}\n"
-                    f"• Acc: {grammar_data['singular']['acc']}\n"
-                    f"• Ins: {grammar_data['singular']['ins']}\n"
-                    f"• Pre: {grammar_data['singular']['pre']}\n\n"
-                    f"*Plural Forms:*\n"
-                    f"• Nom: {grammar_data['plural']['nom']}\n"
-                    f"• Gen: {grammar_data['plural']['gen']}\n"
-                    f"• Dat: {grammar_data['plural']['dat']}\n"
-                    f"• Acc: {grammar_data['plural']['acc']}\n"
-                    f"• Ins: {grammar_data['plural']['ins']}\n"
-                    f"• Pre: {grammar_data['plural']['pre']}"
-                )
+                # Determine if we're dealing with a noun or adjective based on the data structure
+                if "gender" in grammar_data and "animacy" in grammar_data:
+                    # This is a noun
+                    response = (
+                        f"📝 *Noun:* {grammar_data['dictionary_form']}\n"
+                        f"🔤 *Gender:* {grammar_data['gender']}\n"
+                        f"🧬 *Animacy:* {'Animate' if grammar_data['animacy'] else 'Inanimate'}\n"
+                        f"🇬🇧 *English:* {grammar_data['english_translation']}\n\n"
+                        f"*Singular Forms:*\n"
+                        f"• Nom: {grammar_data['singular']['nom']}\n"
+                        f"• Gen: {grammar_data['singular']['gen']}\n"
+                        f"• Dat: {grammar_data['singular']['dat']}\n"
+                        f"• Acc: {grammar_data['singular']['acc']}\n"
+                        f"• Ins: {grammar_data['singular']['ins']}\n"
+                        f"• Pre: {grammar_data['singular']['pre']}\n\n"
+                        f"*Plural Forms:*\n"
+                        f"• Nom: {grammar_data['plural']['nom']}\n"
+                        f"• Gen: {grammar_data['plural']['gen']}\n"
+                        f"• Dat: {grammar_data['plural']['dat']}\n"
+                        f"• Acc: {grammar_data['plural']['acc']}\n"
+                        f"• Ins: {grammar_data['plural']['ins']}\n"
+                        f"• Pre: {grammar_data['plural']['pre']}"
+                    )
+                elif "masculine" in grammar_data and "feminine" in grammar_data and "neuter" in grammar_data:
+                    # This is an adjective
+                    response = (
+                        f"📝 *Adjective:* {grammar_data['dictionary_form']}\n"
+                        f"🇬🇧 *English:* {grammar_data['english_translation']}\n\n"
+                        f"*Masculine Forms:*\n"
+                        f"• Nom: {grammar_data['masculine']['nom']}\n"
+                        f"• Gen: {grammar_data['masculine']['gen']}\n"
+                        f"• Dat: {grammar_data['masculine']['dat']}\n"
+                        f"• Acc: {grammar_data['masculine']['acc']}\n"
+                        f"• Ins: {grammar_data['masculine']['ins']}\n"
+                        f"• Pre: {grammar_data['masculine']['pre']}\n\n"
+                        f"*Feminine Forms:*\n"
+                        f"• Nom: {grammar_data['feminine']['nom']}\n"
+                        f"• Gen: {grammar_data['feminine']['gen']}\n"
+                        f"• Dat: {grammar_data['feminine']['dat']}\n"
+                        f"• Acc: {grammar_data['feminine']['acc']}\n"
+                        f"• Ins: {grammar_data['feminine']['ins']}\n"
+                        f"• Pre: {grammar_data['feminine']['pre']}\n\n"
+                        f"*Neuter Forms:*\n"
+                        f"• Nom: {grammar_data['neuter']['nom']}\n"
+                        f"• Gen: {grammar_data['neuter']['gen']}\n"
+                        f"• Dat: {grammar_data['neuter']['dat']}\n"
+                        f"• Acc: {grammar_data['neuter']['acc']}\n"
+                        f"• Ins: {grammar_data['neuter']['ins']}\n"
+                        f"• Pre: {grammar_data['neuter']['pre']}\n\n"
+                        f"*Plural Forms:*\n"
+                        f"• Nom: {grammar_data['plural']['nom']}\n"
+                        f"• Gen: {grammar_data['plural']['gen']}\n"
+                        f"• Dat: {grammar_data['plural']['dat']}\n"
+                        f"• Acc: {grammar_data['plural']['acc']}\n"
+                        f"• Ins: {grammar_data['plural']['ins']}\n"
+                        f"• Pre: {grammar_data['plural']['pre']}"
+                    )
+
+                    # Add short forms if available
+                    short_forms = []
+                    if grammar_data.get('short_form_masculine'):
+                        short_forms.append(f"• Masculine: {grammar_data['short_form_masculine']}")
+                    if grammar_data.get('short_form_feminine'):
+                        short_forms.append(f"• Feminine: {grammar_data['short_form_feminine']}")
+                    if grammar_data.get('short_form_neuter'):
+                        short_forms.append(f"• Neuter: {grammar_data['short_form_neuter']}")
+                    if grammar_data.get('short_form_plural'):
+                        short_forms.append(f"• Plural: {grammar_data['short_form_plural']}")
+
+                    if short_forms:
+                        response += "\n\n*Short Forms:*\n" + "\n".join(short_forms)
+
+                    # Add comparative and superlative if available
+                    degree_forms = []
+                    if grammar_data.get('comparative'):
+                        degree_forms.append(f"• Comparative: {grammar_data['comparative']}")
+                    if grammar_data.get('superlative'):
+                        degree_forms.append(f"• Superlative: {grammar_data['superlative']}")
+
+                    if degree_forms:
+                        response += "\n\n*Degree Forms:*\n" + "\n".join(degree_forms)
+                else:
+                    # Unknown structure
+                    response = f"Analysis result:\n\n{json.dumps(grammar_data, indent=2, ensure_ascii=False)}"
 
                 await update.message.reply_markdown(response)
             except json.JSONDecodeError:
                 # If we can't parse JSON, just send the raw result
                 await update.message.reply_text(f"Analysis result:\n\n{result['final_answer']}")
         else:
-            await update.message.reply_text("I couldn't analyze that word. Please try again with a Russian noun.")
+            await update.message.reply_text("I couldn't analyze that word. Please try again with a Russian noun or adjective.")
 
     except Exception as e:
         logger.error(f"Error processing word: {str(e)}")
