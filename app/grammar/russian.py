@@ -3,6 +3,23 @@ from typing import Literal, Dict
 
 Case = Literal["nom", "gen", "dat", "acc", "ins", "pre"]
 Gender = Literal["masculine", "feminine", "neuter"]
+WordType = Literal["noun", "verb", "adjective", "adverb", "preposition", "number"]
+
+class WordClassification(BaseModel):
+    word_type: WordType
+    russian_word: str
+    original_word: str
+    
+    @staticmethod
+    def get_format_instructions() -> str:
+        return (
+            "Your response must be valid JSON that matches this schema:\n"
+            "{\n"
+            "  \"word_type\": \"noun\" | \"verb\" | \"adjective\" | \"adverb\" | \"preposition\" | \"number\",\n"
+            "  \"russian_word\": \"string (the Russian translation/form of the word)\",\n"
+            "  \"original_word\": \"string (the original input word)\"\n"
+            "}"
+        )
 
 class Noun(BaseModel):
     dictionary_form: str

@@ -13,16 +13,19 @@ from app.my_graph.prompts import (
   get_noun_grammar_prompt,
   get_adjective_grammar_prompt,
 )
+from app.grammar.russian import (
+  WordClassification,
+  Noun,
+  Adjective,
+)
 
 class State(TypedDict):
     original_human_input: str
-    classification: Optional[Dict]
-    noun_grammar: Optional[str]
-    adjective_grammar: Optional[str]
+    classification: Optional[WordClassification]
+    noun_grammar: Optional[Noun]
+    adjective_grammar: Optional[Adjective]
     final_answer: Optional[str]
 
-# Define word types as a type alias instead of a class
-WordType = Literal["noun", "verb", "adjective", "adverb", "preposition", "number"]
 
 class RussianTutor:
     def __init__(self, api_key: SecretStr, model: str = "gpt-4o"):
@@ -31,19 +34,19 @@ class RussianTutor:
         self.initial_classification_chain = (
             initial_classification_prompt
             | self.llm
-            | StrOutputParser()
+            | PydanticOutputParser(pydantic_object=WordClassification)
         )
 
-        self.get_noun_grammar_chain: RunnableSerializable[dict[Any, Any], str] = (
+        self.get_noun_grammar_chain: RunnableSerializable[dict[Any, Any], Noun] = (
             get_noun_grammar_prompt
             | self.llm
-            | StrOutputParser()
+            | PydanticOutputParser(pydantic_object=Noun)
         )
 
-        self.get_adjective_grammar_chain: RunnableSerializable[dict[Any, Any], str] = (
+        self.get_adjective_grammar_chain: RunnableSerializable[dict[Any, Any], Adjective] = (
             get_adjective_grammar_prompt
             | self.llm
-            | StrOutputParser()
+            | PydanticOutputParser(pydantic_object=Adjective)
         )
 
         self.graph = self._build_graph()
@@ -55,42 +58,14 @@ class RussianTutor:
         if writer and hasattr(writer, 'write'):
             writer.write("Analyzing input...\n")
 
-        result = self.initial_classification_chain.invoke(
+        result: WordClassification = self.initial_classification_chain.invoke(
             {"word": state["original_human_input"]},
             config=config
         )
 
-        # Parse the result to determine word type
-        # This is a simplified version - in a real implementation you would
-        # parse the LLM response more carefully
-        word_type = "noun"  # Default to noun for this example
-        russian_word = state["original_human_input"]
-
-        if "noun" in result.lower():
-            word_type = "noun"
-        elif "verb" in result.lower():
-            word_type = "verb"
-        elif "adjective" in result.lower():
-            word_type = "adjective"
-        elif "adverb" in result.lower():
-            word_type = "adverb"
-        elif "preposition" in result.lower():
-            word_type = "preposition"
-        elif "number" in result.lower():
-            word_type = "number"
-
-        # Extract the Russian word if translation was performed
-        for line in result.split("\n"):
-            if "russian:" in line.lower():
-                russian_word = line.split(":", 1)[1].strip()
-                break
-
         return {
             **state,
-            "classification": {
-                "word_type": word_type,
-                "russian_word": russian_word
-            }
+            "classification": result
         }
 
     def get_noun_grammar(
@@ -100,16 +75,16 @@ class RussianTutor:
         if writer and hasattr(writer, 'write'):
             writer.write("Getting noun grammar details...\n")
 
-        word = state.get("classification", {}).get("russian_word", state["original_human_input"])
+        word = state.get("classification").russian_word if state.get("classification") else state["original_human_input"]
 
-        result: str = self.get_noun_grammar_chain.invoke(
+        result: Noun = self.get_noun_grammar_chain.invoke(
             {"word": word}, config=config
         )
 
         return {
             **state,
             "noun_grammar": result,
-            "final_answer": result
+            "final_answer": result.model_dump_json(indent=2)
         }
 
     def get_adjective_grammar(
@@ -119,16 +94,16 @@ class RussianTutor:
         if writer and hasattr(writer, 'write'):
             writer.write("Getting adjective grammar details...\n")
 
-        word = state.get("classification", {}).get("russian_word", state["original_human_input"])
+        word = state.get("classification").russian_word if state.get("classification") else state["original_human_input"]
 
-        result: str = self.get_adjective_grammar_chain.invoke(
+        result: Adjective = self.get_adjective_grammar_chain.invoke(
             {"word": word}, config=config
         )
 
         return {
             **state,
             "adjective_grammar": result,
-            "final_answer": result
+            "final_answer": result.model_dump_json(indent=2)
         }
 
     def _build_graph(self) -> RunnableSerializable:
@@ -147,7 +122,7 @@ class RussianTutor:
         # Route based on word type
         workflow.add_conditional_edges(
             "initial_classification",
-            lambda state: state.get("classification", {}).get("word_type", "noun"),
+            lambda state: state.get("classification").word_type if state.get("classification") else "noun",
             {
                 "noun": "get_noun_grammar",
                 "adjective": "get_adjective_grammar",

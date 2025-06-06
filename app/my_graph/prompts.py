@@ -1,7 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
 from app.grammar.russian import (
   Noun,
-  Adjective
+  Adjective,
+  WordClassification
 )
 
 
@@ -13,9 +14,14 @@ initial_classification_prompt = ChatPromptTemplate(
        "You will be given a word in english, german, turkish, azerbaijani or russian."
        "If the word is in russian find its dictionary form and classify it as a noun, number, verb, adjective, adverb or preposition."
        "If the word is in any other language, translate it to russian and classify it as a noun, number, verb, adjective, adverb or preposition."
+       "\nYour response MUST be a valid JSON object matching this schema:\n"
+       "{format_instructions}\n"
      )),
     ("user", "{word}")
-  ]
+  ],
+  partial_variables={
+    "format_instructions": WordClassification.get_format_instructions(),
+  }
 )
 
 get_noun_grammar_prompt = ChatPromptTemplate(
