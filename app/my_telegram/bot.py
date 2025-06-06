@@ -22,7 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
-        rf"Hi {user.mention_html()}! I'm a Russian language tutor bot. Send me a Russian noun or adjective, and I'll analyze its grammar for you.",
+        rf"Hi {user.mention_html()}! I'm a Russian language tutor bot. Send me a Russian noun, adjective, or verb, and I'll analyze its grammar for you.",
         reply_markup=ForceReply(selective=True)
     )
 
@@ -32,10 +32,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "I can help you learn Russian grammar!\n\n"
         "Just send me a Russian word, and I'll analyze it for you:\n\n"
         "• For nouns: I'll show gender, animacy, and all case forms\n"
-        "• For adjectives: I'll show all gender forms, cases, and special forms\n\n"
+        "• For adjectives: I'll show all gender forms, cases, and special forms\n"
+        "• For verbs: I'll show aspect, conjugation, and all tense forms\n\n"
         "Examples to try:\n"
         "- 'книга' (book) or 'стол' (table) for nouns\n"
-        "- 'красивый' (beautiful) or 'хороший' (good) for adjectives"
+        "- 'красивый' (beautiful) or 'хороший' (good) for adjectives\n"
+        "- 'читать' (to read) or 'идти' (to go) for verbs"
     )
 
 async def process_russian_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -135,11 +137,85 @@ async def process_russian_word(update: Update, context: ContextTypes.DEFAULT_TYP
 
                     if degree_forms:
                         response += "\n\n*Degree Forms:*\n" + "\n".join(degree_forms)
+                elif "aspect" in grammar_data and "past_masculine" in grammar_data:
+                    # This is a verb
+                    response = (
+                        f"📝 *Verb:* {grammar_data['dictionary_form']}\n"
+                        f"🇬🇧 *English:* {grammar_data['english_translation']}\n"
+                        f"⚡ *Aspect:* {grammar_data['aspect']}\n"
+                        f"🔄 *Conjugation:* {grammar_data['conjugation']}\n"
+                    )
+                    
+                    # Add aspect pair if available
+                    if grammar_data.get('aspect_pair') and grammar_data['aspect_pair'] is not None:
+                        response += f"👥 *Aspect Pair:* {grammar_data['aspect_pair']}\n"
+                    
+                    # Add motion characteristics if applicable
+                    if grammar_data.get('unidirectional') or grammar_data.get('multidirectional'):
+                        motion_type = []
+                        if grammar_data.get('unidirectional'):
+                            motion_type.append("unidirectional")
+                        if grammar_data.get('multidirectional'):
+                            motion_type.append("multidirectional")
+                        response += f"🏃 *Motion:* {', '.join(motion_type)}\n"
+                    
+                    response += "\n"
+                    
+                    # Add present tense forms (for imperfective verbs)
+                    if grammar_data.get('present_first_singular') and grammar_data['present_first_singular'] is not None:
+                        response += (
+                            f"*Present Tense:*\n"
+                            f"• я: {grammar_data['present_first_singular']}\n"
+                            f"• ты: {grammar_data['present_second_singular']}\n"
+                            f"• он/она/оно: {grammar_data['present_third_singular']}\n"
+                            f"• мы: {grammar_data['present_first_plural']}\n"
+                            f"• вы: {grammar_data['present_second_plural']}\n"
+                            f"• они: {grammar_data['present_third_plural']}\n\n"
+                        )
+                    
+                    # Add past tense forms
+                    response += (
+                        f"*Past Tense:*\n"
+                        f"• он: {grammar_data['past_masculine']}\n"
+                        f"• она: {grammar_data['past_feminine']}\n"
+                        f"• оно: {grammar_data['past_neuter']}\n"
+                        f"• они: {grammar_data['past_plural']}\n"
+                    )
+                    
+                    # Add future tense forms if available
+                    if grammar_data.get('future_first_singular') and grammar_data['future_first_singular'] is not None:
+                        response += (
+                            f"\n*Future Tense:*\n"
+                            f"• я: {grammar_data['future_first_singular']}\n"
+                            f"• ты: {grammar_data['future_second_singular']}\n"
+                            f"• он/она/оно: {grammar_data['future_third_singular']}\n"
+                            f"• мы: {grammar_data['future_first_plural']}\n"
+                            f"• вы: {grammar_data['future_second_plural']}\n"
+                            f"• они: {grammar_data['future_third_plural']}\n"
+                        )
+                    
+                    # Add imperative forms if available
+                    imperative_forms = []
+                    if grammar_data.get('imperative_singular') and grammar_data['imperative_singular'] is not None:
+                        imperative_forms.append(f"• Singular: {grammar_data['imperative_singular']}")
+                    if grammar_data.get('imperative_plural') and grammar_data['imperative_plural'] is not None:
+                        imperative_forms.append(f"• Plural: {grammar_data['imperative_plural']}")
+                    
+                    if imperative_forms:
+                        response += "\n*Imperative:*\n" + "\n".join(imperative_forms)
                 else:
-                    # Unknown structure
+                    # Unknown structure - use text mode to avoid markdown issues
                     response = f"Analysis result:\n\n{json.dumps(grammar_data, indent=2, ensure_ascii=False)}"
+                    # Send as plain text to avoid markdown parsing issues
+                    await update.message.reply_text(response)
+                    return
 
-                await update.message.reply_markdown(response)
+                # Try to send as markdown, fallback to plain text if it fails
+                try:
+                    await update.message.reply_markdown(response)
+                except Exception as markdown_error:
+                    logger.warning(f"Markdown parsing failed: {markdown_error}. Sending as plain text.")
+                    await update.message.reply_text(response)
             except json.JSONDecodeError:
                 # If we can't parse JSON, just send the raw result
                 await update.message.reply_text(f"Analysis result:\n\n{result['final_answer']}")

@@ -2,6 +2,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from app.grammar.russian import (
   Noun,
   Adjective,
+  Verb,
   WordClassification
 )
 
@@ -57,5 +58,25 @@ get_adjective_grammar_prompt = ChatPromptTemplate(
   ],
   partial_variables={
     "format_instructions": Adjective.get_format_instructions(),
+  }
+)
+
+get_verb_grammar_prompt = ChatPromptTemplate(
+  messages=[
+    ("system",
+     (
+       "You are a helpful assistant that helps the user to learn russian."
+       "You will be given a verb in russian."
+       "Find its dictionary form (infinitive) and provide its aspect (perfective/imperfective), aspect pair if it exists, "
+       "conjugation pattern, and all conjugated forms including present (for imperfective), past, future, imperative forms. "
+       "For motion verbs, indicate if they are unidirectional or multidirectional. "
+       "Also include participles and gerunds if they exist."
+       "\nYour response MUST be a valid JSON object matching this schema:\n"
+       "{format_instructions}\n"
+     )),
+    ("user", "{word}"),
+  ],
+  partial_variables={
+    "format_instructions": Verb.get_format_instructions(),
   }
 )

@@ -1,9 +1,14 @@
 from pydantic import BaseModel
-from typing import Literal, Dict
+from typing import Literal, Dict, Optional
 
 Case = Literal["nom", "gen", "dat", "acc", "ins", "pre"]
 Gender = Literal["masculine", "feminine", "neuter"]
 WordType = Literal["noun", "verb", "adjective", "adverb", "preposition", "number"]
+Aspect = Literal["perfective", "imperfective", "both"]
+Person = Literal["first", "second", "third"]
+Number = Literal["singular", "plural"]
+Tense = Literal["present", "past", "future"]
+Mood = Literal["indicative", "imperative", "conditional"]
 
 class WordClassification(BaseModel):
     word_type: WordType
@@ -129,5 +134,92 @@ class Adjective(BaseModel):
           "  \"comparative\": \"string (optional)\",\n"
           "  \"superlative\": \"string (optional)\"\n"
           "}"
+        )
+
+class Verb(BaseModel):
+    dictionary_form: str
+    english_translation: str
+    aspect: Aspect
+    aspect_pair: Optional[str] = None  # The verb's aspectual partner (if it exists)
+    
+    # Motion verb characteristics
+    unidirectional: bool = False  # For motion verbs like идти vs ехать
+    multidirectional: bool = False  # For motion verbs like ходить vs ездить
+    
+    # Conjugation pattern (1st or 2nd conjugation)
+    conjugation: Literal["first", "second", "irregular"]
+    
+    # Present tense forms (only for imperfective verbs)
+    present_first_singular: Optional[str] = None
+    present_second_singular: Optional[str] = None
+    present_third_singular: Optional[str] = None
+    present_first_plural: Optional[str] = None
+    present_second_plural: Optional[str] = None
+    present_third_plural: Optional[str] = None
+    
+    # Past tense forms
+    past_masculine: str
+    past_feminine: str  
+    past_neuter: str
+    past_plural: str
+    
+    # Future tense forms (for perfective verbs, or будущее сложное for imperfective)
+    future_first_singular: Optional[str] = None
+    future_second_singular: Optional[str] = None
+    future_third_singular: Optional[str] = None
+    future_first_plural: Optional[str] = None
+    future_second_plural: Optional[str] = None
+    future_third_plural: Optional[str] = None
+    
+    # Imperative forms
+    imperative_singular: Optional[str] = None
+    imperative_plural: Optional[str] = None
+    
+    # Participles and gerunds (optional)
+    present_active_participle: Optional[str] = None
+    present_passive_participle: Optional[str] = None
+    past_active_participle: Optional[str] = None
+    past_passive_participle: Optional[str] = None
+    present_gerund: Optional[str] = None
+    past_gerund: Optional[str] = None
+
+    @staticmethod
+    def get_format_instructions() -> str:
+        return (
+            "Your response must be valid JSON that matches this schema:\n"
+            "{\n"
+            "  \"dictionary_form\": \"string (infinitive form of the verb)\",\n"
+            "  \"english_translation\": \"string\",\n"
+            "  \"aspect\": \"perfective\" | \"imperfective\" | \"both\",\n"
+            "  \"aspect_pair\": \"string or null (the aspectual partner verb if it exists)\",\n"
+            "  \"unidirectional\": true | false,\n"
+            "  \"multidirectional\": true | false,\n"
+            "  \"conjugation\": \"first\" | \"second\" | \"irregular\",\n"
+            "  \"present_first_singular\": \"string or null (я form, only for imperfective verbs)\",\n"
+            "  \"present_second_singular\": \"string or null (ты form, only for imperfective verbs)\",\n"
+            "  \"present_third_singular\": \"string or null (он/она/оно form, only for imperfective verbs)\",\n"
+            "  \"present_first_plural\": \"string or null (мы form, only for imperfective verbs)\",\n"
+            "  \"present_second_plural\": \"string or null (вы form, only for imperfective verbs)\",\n"
+            "  \"present_third_plural\": \"string or null (они form, only for imperfective verbs)\",\n"
+            "  \"past_masculine\": \"string (он form)\",\n"
+            "  \"past_feminine\": \"string (она form)\",\n"
+            "  \"past_neuter\": \"string (оно form)\",\n"
+            "  \"past_plural\": \"string (они form)\",\n"
+            "  \"future_first_singular\": \"string or null (я form, for perfective or compound future)\",\n"
+            "  \"future_second_singular\": \"string or null (ты form, for perfective or compound future)\",\n"
+            "  \"future_third_singular\": \"string or null (он/она/оно form, for perfective or compound future)\",\n"
+            "  \"future_first_plural\": \"string or null (мы form, for perfective or compound future)\",\n"
+            "  \"future_second_plural\": \"string or null (вы form, for perfective or compound future)\",\n"
+            "  \"future_third_plural\": \"string or null (они form, for perfective or compound future)\",\n"
+            "  \"imperative_singular\": \"string or null (imperative singular form if exists)\",\n"
+            "  \"imperative_plural\": \"string or null (imperative plural form if exists)\",\n"
+            "  \"present_active_participle\": \"string or null (if exists)\",\n"
+            "  \"present_passive_participle\": \"string or null (if exists)\",\n"
+            "  \"past_active_participle\": \"string or null (if exists)\",\n"
+            "  \"past_passive_participle\": \"string or null (if exists)\",\n"
+            "  \"present_gerund\": \"string or null (if exists)\",\n"
+            "  \"past_gerund\": \"string or null (if exists)\"\n"
+            "}\n"
+            "Important: Use null for optional fields that don't exist or don't apply to this verb."
         )
 
