@@ -7,3 +7,4 @@ pydantic-settings==2.9.1
 debugpy==1.8.14
 langgraph==0.4.8
 langchain-openai==0.3.19
+pymongo>=4.13.0

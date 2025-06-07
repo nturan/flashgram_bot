@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     token: str = os.getenv("TELEGRAM_BOT_TOKEN")
     openai_api_key: str = os.getenv("OPENAI_API_KEY")
     llm_model: str = os.getenv("LLM_MODEL", "gpt-4o")
+    
+    # MongoDB settings
+    mongodb_cluster: str = os.getenv("MONGODB_CLUSTER")
+    mongodb_cluster_url: str = f"{mongodb_cluster}.mongodb.net"
+    mongodb_username: str = os.getenv("MONGODB_USERNAME")
+    mongodb_password: str = os.getenv("MONGODB_PASSWORD")
+    mongodb_database: str = os.getenv("MONGODB_DATABASE", "flashcards")
 
     if not token:
         logger.error("No Telegram token found!")
@@ -27,6 +34,10 @@ class Settings(BaseSettings):
 
     if not openai_api_key:
         logger.error("No OpenAI API key found!")
+        sys.exit(1)
+        
+    if not mongodb_username or not mongodb_password:
+        logger.error("MongoDB credentials not found! Please set MONGODB_USERNAME and MONGODB_PASSWORD environment variables.")
         sys.exit(1)
 
 

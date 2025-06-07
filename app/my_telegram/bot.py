@@ -13,21 +13,14 @@ import logging
 from typing import Dict, List, Tuple, Optional
 
 from app.my_graph.language_tutor import RussianTutor
+from app.database import flashcard_db
+from app.flashcards.service import flashcard_service
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
 
 # This will be initialized in init_application
 russian_tutor = None
-
-# Simple flashcard test data (question -> answer)
-TEST_FLASHCARDS: List[Tuple[str, str]] = [
-    ("What is A?", "B"),
-    ("What is C?", "D"),
-    ("What is E?", "F"),
-    ("What is G?", "H"),
-    ("What is I?", "J"),
-]
 
 # User session data to track learn mode
 user_sessions: Dict[int, Dict] = {}
@@ -50,7 +43,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "• For verbs: I'll show aspect, conjugation, and all tense forms\n\n"
         "Commands:\n"
         "• /learn - Start flashcard learning mode\n"
-        "• /finish - Exit learning mode\n\n"
+        "• /finish - Exit learning mode\n"
+        "• /dbstatus - Check database connection status\n\n"
         "Examples to try:\n"
         "- 'книга' (book) or 'стол' (table) for nouns\n"
         "- 'красивый' (beautiful) or 'хороший' (good) for adjectives\n"
@@ -61,29 +55,48 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Start the flashcard learning mode."""
     user_id = update.effective_user.id
     
-    # Initialize user session
-    user_sessions[user_id] = {
-        'learning_mode': True,
-        'flashcards': TEST_FLASHCARDS.copy(),
-        'current_question': None,
-        'current_answer': None,
-        'score': 0,
-        'total_questions': 0
-    }
+    # Send typing action while loading flashcards
+    await update.message.chat.send_action(action="typing")
     
-    # Shuffle flashcards for random order
-    random.shuffle(user_sessions[user_id]['flashcards'])
-    
-    await update.message.reply_text(
-        "🎓 *Learning Mode Started!*\n\n"
-        "I'll ask you flashcard questions. Answer them and I'll check your responses.\n"
-        "Type /finish to exit learning mode.\n\n"
-        "Let's begin!", 
-        parse_mode='Markdown'
-    )
-    
-    # Ask the first question
-    await ask_next_question(update, context)
+    try:
+        # Get flashcards for learning session
+        flashcards = flashcard_service.get_learning_session_flashcards(limit=20)
+        
+        if not flashcards:
+            await update.message.reply_text(
+                "❌ No flashcards found in the database!\n\n"
+                "Please add some flashcards first or contact the administrator.",
+                parse_mode='Markdown'
+            )
+            return
+        
+        # Initialize user session
+        user_sessions[user_id] = {
+            'learning_mode': True,
+            'flashcards': flashcards.copy(),
+            'current_flashcard': None,
+            'score': 0,
+            'total_questions': 0
+        }
+        
+        await update.message.reply_text(
+            f"🎓 *Learning Mode Started!*\n\n"
+            f"📚 Loaded {len(flashcards)} flashcards from database\n"
+            f"I'll ask you flashcard questions. Answer them and I'll check your responses.\n"
+            f"Type /finish to exit learning mode.\n\n"
+            f"Let's begin!", 
+            parse_mode='Markdown'
+        )
+        
+        # Ask the first question
+        await ask_next_question(update, context)
+        
+    except Exception as e:
+        logger.error(f"Error loading flashcards: {e}")
+        await update.message.reply_text(
+            "❌ Error loading flashcards from database.\n"
+            "Please try again later or contact the administrator."
+        )
 
 async def finish_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Exit the flashcard learning mode."""
@@ -107,6 +120,47 @@ async def finish_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("You're not in learning mode. Use /learn to start!")
 
+async def dbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check MongoDB connection status and flashcard count."""
+    await update.message.chat.send_action(action="typing")
+    
+    try:
+        # Get flashcard statistics
+        stats = flashcard_service.get_flashcard_stats()
+        
+        if stats:
+            tags_str = ", ".join(stats.get('tags', [])[:5])  # Show first 5 tags
+            if len(stats.get('tags', [])) > 5:
+                tags_str += "..."
+                
+            await update.message.reply_text(
+                f"🟢 *Database Status: Connected*\n\n"
+                f"📊 *Flashcard Statistics:*\n"
+                f"• Total: {stats.get('total', 0)}\n"
+                f"• Two-sided: {stats.get('two_sided', 0)}\n"
+                f"• Fill-in-blank: {stats.get('fill_in_blank', 0)}\n"
+                f"• Multiple choice: {stats.get('multiple_choice', 0)}\n"
+                f"• Due for review: {stats.get('due_for_review', 0)}\n"
+                f"• Unique tags: {stats.get('unique_tags', 0)}\n"
+                f"• Sample tags: {tags_str}",
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text(
+                f"🟢 *Database Status: Connected*\n\n"
+                f"❌ Could not retrieve statistics",
+                parse_mode='Markdown'
+            )
+        
+    except Exception as e:
+        logger.error(f"Database status check failed: {e}")
+        await update.message.reply_text(
+            f"🔴 *Database Status: Disconnected*\n\n"
+            f"❌ Error: {str(e)}\n\n"
+            f"Please contact the administrator.",
+            parse_mode='Markdown'
+        )
+
 async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ask the next flashcard question."""
     user_id = update.effective_user.id
@@ -116,13 +170,15 @@ async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
     
     if session['flashcards']:
-        # Get next question
-        question, answer = session['flashcards'].pop(0)
-        session['current_question'] = question
-        session['current_answer'] = answer
+        # Get next flashcard
+        flashcard = session['flashcards'].pop(0)
+        session['current_flashcard'] = flashcard
+        
+        # Format question for display
+        question_text = flashcard_service.format_question_for_bot(flashcard)
         
         await update.message.reply_text(
-            f"❓ *Question:*\n{question}",
+            question_text,
             parse_mode='Markdown'
         )
     else:
@@ -149,28 +205,29 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not session or not session.get('learning_mode'):
         return
     
+    current_flashcard = session.get('current_flashcard')
+    if not current_flashcard:
+        await update.message.reply_text("❌ No active flashcard found.")
+        return
+    
     user_answer = update.message.text.strip()
-    correct_answer = session.get('current_answer', '')
     
     # Update total questions count
     session['total_questions'] += 1
     
-    # Check if answer is correct (case-insensitive)
-    is_correct = user_answer.lower() == correct_answer.lower()
+    # Check answer using the flashcard service
+    is_correct, feedback = flashcard_service.check_answer(current_flashcard, user_answer)
     
     if is_correct:
         session['score'] += 1
-        await update.message.reply_text(
-            f"✅ *Correct!* \n\nAnswer: {correct_answer}",
-            parse_mode='Markdown'
-        )
-    else:
-        await update.message.reply_text(
-            f"❌ *Incorrect.*\n\nYour answer: {user_answer}\nCorrect answer: {correct_answer}",
-            parse_mode='Markdown'
-        )
     
-    # Ask next question after a brief pause
+    # Update flashcard statistics in database
+    flashcard_service.update_flashcard_after_review(current_flashcard, is_correct)
+    
+    # Send feedback
+    await update.message.reply_text(feedback, parse_mode='Markdown')
+    
+    # Ask next question
     await ask_next_question(update, context)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -179,7 +236,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     session = user_sessions.get(user_id)
     
     # Check if user is in learning mode
-    if session and session.get('learning_mode') and session.get('current_question'):
+    if session and session.get('learning_mode') and session.get('current_flashcard'):
         await process_answer(update, context)
     else:
         await process_russian_word(update, context)
@@ -383,6 +440,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("learn", learn_command))
     application.add_handler(CommandHandler("finish", finish_command))
+    application.add_handler(CommandHandler("dbstatus", dbstatus_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     return application
