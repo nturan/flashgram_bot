@@ -55,24 +55,28 @@ class FlashcardGenerator:
         # Generate fill-in-the-gap flashcards for singular forms
         for case, form in noun.singular.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():  # Only create if form exists and is different
+                grammatical_key = f"{case.upper()} singular"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} singular",
                     word_type="noun",
-                    tags=["russian", "noun", "singular", case, "grammar"]
+                    tags=["russian", "noun", "singular", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for plural forms
         for case, form in noun.plural.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():  # Only create if form exists and is different
+                grammatical_key = f"{case.upper()} plural"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} plural",
                     word_type="noun",
-                    tags=["russian", "noun", "plural", case, "grammar"]
+                    tags=["russian", "noun", "plural", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
@@ -104,48 +108,56 @@ class FlashcardGenerator:
         # Generate fill-in-the-gap flashcards for masculine forms
         for case, form in adjective.masculine.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"{case.upper()} masculine"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} masculine",
                     word_type="adjective",
-                    tags=["russian", "adjective", "masculine", case, "grammar"]
+                    tags=["russian", "adjective", "masculine", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for feminine forms
         for case, form in adjective.feminine.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"{case.upper()} feminine"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} feminine",
                     word_type="adjective",
-                    tags=["russian", "adjective", "feminine", case, "grammar"]
+                    tags=["russian", "adjective", "feminine", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for neuter forms
         for case, form in adjective.neuter.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"{case.upper()} neuter"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} neuter",
                     word_type="adjective",
-                    tags=["russian", "adjective", "neuter", case, "grammar"]
+                    tags=["russian", "adjective", "neuter", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for plural forms
         for case, form in adjective.plural.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"{case.upper()} plural"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"{case.upper()} plural",
                     word_type="adjective",
-                    tags=["russian", "adjective", "plural", case, "grammar"]
+                    tags=["russian", "adjective", "plural", case, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
@@ -159,12 +171,14 @@ class FlashcardGenerator:
         
         for gender, form in short_forms.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"short {gender}"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"short {gender}",
                     word_type="adjective",
-                    tags=["russian", "adjective", "short_form", gender, "grammar"]
+                    tags=["russian", "adjective", "short_form", gender, "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
@@ -258,83 +272,93 @@ class FlashcardGenerator:
         
         # Generate fill-in-the-gap flashcards for present tense (for imperfective verbs)
         present_forms = {
-            "я": verb.present_first_singular,
-            "ты": verb.present_second_singular,
-            "он/она/оно": verb.present_third_singular,
-            "мы": verb.present_first_plural,
-            "вы": verb.present_second_plural,
-            "они": verb.present_third_plural
+            "я": ("first person singular", verb.present_first_singular),
+            "ты": ("second person singular", verb.present_second_singular),
+            "он/она/оно": ("third person singular", verb.present_third_singular),
+            "мы": ("first person plural", verb.present_first_plural),
+            "вы": ("second person plural", verb.present_second_plural),
+            "они": ("third person plural", verb.present_third_plural)
         }
         
-        for pronoun, form in present_forms.items():
+        for pronoun, (person_desc, form) in present_forms.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"present {person_desc}"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"present tense for {pronoun}",
                     word_type="verb",
-                    tags=["russian", "verb", "present", "grammar"]
+                    tags=["russian", "verb", "present", "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for past tense
         past_forms = {
-            "он": verb.past_masculine,
-            "она": verb.past_feminine,
-            "оно": verb.past_neuter,
-            "они": verb.past_plural
+            "он": ("masculine", verb.past_masculine),
+            "она": ("feminine", verb.past_feminine),
+            "оно": ("neuter", verb.past_neuter),
+            "они": ("plural", verb.past_plural)
         }
         
-        for pronoun, form in past_forms.items():
+        for pronoun, (gender_desc, form) in past_forms.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"past {gender_desc}"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"past tense for {pronoun}",
                     word_type="verb",
-                    tags=["russian", "verb", "past", "grammar"]
+                    tags=["russian", "verb", "past", "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for future tense if they exist
         future_forms = {
-            "я": verb.future_first_singular,
-            "ты": verb.future_second_singular,
-            "он/она/оно": verb.future_third_singular,
-            "мы": verb.future_first_plural,
-            "вы": verb.future_second_plural,
-            "они": verb.future_third_plural
+            "я": ("first person singular", verb.future_first_singular),
+            "ты": ("second person singular", verb.future_second_singular),
+            "он/она/оно": ("third person singular", verb.future_third_singular),
+            "мы": ("first person plural", verb.future_first_plural),
+            "вы": ("second person plural", verb.future_second_plural),
+            "они": ("third person plural", verb.future_third_plural)
         }
         
-        for pronoun, form in future_forms.items():
+        for pronoun, (person_desc, form) in future_forms.items():
             if form and form.strip() and form.lower() != dictionary_form.lower():
+                grammatical_key = f"future {person_desc}"
                 flashcard = self._create_fill_in_gap_card(
                     dictionary_form=dictionary_form,
                     target_form=form,
                     form_description=f"future tense for {pronoun}",
                     word_type="verb",
-                    tags=["russian", "verb", "future", "grammar"]
+                    tags=["russian", "verb", "future", "grammar"],
+                    grammatical_key=grammatical_key
                 )
                 flashcards.append(flashcard)
         
         # Generate fill-in-the-gap flashcards for imperative forms if they exist
         if verb.imperative_singular and verb.imperative_singular.strip() and verb.imperative_singular.lower() != dictionary_form.lower():
+            grammatical_key = "imperative singular"
             flashcard = self._create_fill_in_gap_card(
                 dictionary_form=dictionary_form,
                 target_form=verb.imperative_singular,
                 form_description="singular imperative",
                 word_type="verb",
-                tags=["russian", "verb", "imperative", "grammar"]
+                tags=["russian", "verb", "imperative", "grammar"],
+                grammatical_key=grammatical_key
             )
             flashcards.append(flashcard)
         
         if verb.imperative_plural and verb.imperative_plural.strip() and verb.imperative_plural.lower() != dictionary_form.lower():
+            grammatical_key = "imperative plural"
             flashcard = self._create_fill_in_gap_card(
                 dictionary_form=dictionary_form,
                 target_form=verb.imperative_plural,
                 form_description="plural imperative",
                 word_type="verb",
-                tags=["russian", "verb", "imperative", "grammar"]
+                tags=["russian", "verb", "imperative", "grammar"],
+                grammatical_key=grammatical_key
             )
             flashcards.append(flashcard)
         
@@ -478,7 +502,7 @@ Example format: "Я читаю интересную книгу в библиот
             logger.error(f"Error cleaning sentence: {e}")
             return sentence
     
-    def _create_fill_in_gap_card(self, dictionary_form: str, target_form: str, form_description: str, word_type: str, tags: List[str]) -> FillInTheBlank:
+    def _create_fill_in_gap_card(self, dictionary_form: str, target_form: str, form_description: str, word_type: str, tags: List[str], grammatical_key: str = None) -> FillInTheBlank:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
         
         # Generate example sentence
@@ -519,7 +543,13 @@ Example format: "Я читаю интересную книгу в библиот
             answers=[suffix],
             case_sensitive=False,
             tags=tags + ["fill_in_gap", "suffix"],
-            title=f"{dictionary_form} - {form_description} (gap fill)"
+            title=f"{dictionary_form} - {form_description} (gap fill)",
+            # Store the grammatical key for the hint
+            metadata={
+                "form_description": form_description, 
+                "dictionary_form": dictionary_form,
+                "grammatical_key": grammatical_key or form_description
+            }
         )
 
 # Global instance

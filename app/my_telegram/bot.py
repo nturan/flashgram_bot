@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any
 from pydantic import SecretStr
 
 from app.my_graph.language_tutor import RussianTutor
-from app.flashcards import flashcard_service
+from app.flashcards import flashcard_service, TwoSidedCard, FillInTheBlank, MultipleChoice
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
@@ -518,6 +518,31 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                 await query.edit_message_text(
                     text="❌ Error: Invalid callback data."
                 )
+        elif callback_data.startswith("edit_"):
+            # Edit flashcard
+            flashcard_id = callback_data.split("_", 1)[1]
+            await handle_edit_flashcard(query, context, flashcard_id)
+        
+        elif callback_data.startswith("delete_"):
+            # Delete flashcard
+            flashcard_id = callback_data.split("_", 1)[1]
+            await handle_delete_flashcard(query, context, flashcard_id)
+        
+        elif callback_data.startswith("answer_"):
+            # Show answer for non-multiple choice cards
+            flashcard_id = callback_data.split("_", 1)[1]
+            await handle_show_answer(query, context, flashcard_id)
+        
+        elif callback_data.startswith("confirm_delete_"):
+            # Confirm deletion
+            flashcard_id = callback_data.split("_", 2)[2]
+            await handle_confirm_delete(query, context, flashcard_id)
+        
+        elif callback_data.startswith("cancel_delete_"):
+            # Cancel deletion
+            flashcard_id = callback_data.split("_", 2)[2]
+            await handle_cancel_delete(query, context, flashcard_id)
+        
         else:
             await query.edit_message_text(
                 text="❌ Error: Unknown callback type."
@@ -578,6 +603,196 @@ async def ask_next_question_after_callback(query, context: ContextTypes.DEFAULT_
     except Exception as e:
         logger.error(f"Error asking next question after callback: {e}")
         await query.message.reply_text("❌ Error loading next question. Please try /learn again.")
+
+async def handle_edit_flashcard(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Handle flashcard editing with a creative UX."""
+    try:
+        # Get the flashcard from database
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        
+        if not flashcard:
+            await query.edit_message_text("❌ Flashcard not found.")
+            return
+        
+        # Create editing options based on flashcard type
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        edit_buttons = []
+        
+        if isinstance(flashcard, TwoSidedCard):
+            edit_buttons = [
+                [InlineKeyboardButton("📝 Edit Question", callback_data=f"edit_front_{flashcard_id}")],
+                [InlineKeyboardButton("💡 Edit Answer", callback_data=f"edit_back_{flashcard_id}")],
+                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
+                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
+            ]
+        elif isinstance(flashcard, FillInTheBlank):
+            edit_buttons = [
+                [InlineKeyboardButton("📝 Edit Sentence", callback_data=f"edit_sentence_{flashcard_id}")],
+                [InlineKeyboardButton("🎯 Edit Answer", callback_data=f"edit_answer_{flashcard_id}")],
+                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
+                [InlineKeyboardButton("🔄 Regenerate Sentence", callback_data=f"regen_sentence_{flashcard_id}")],
+                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
+            ]
+        elif isinstance(flashcard, MultipleChoice):
+            edit_buttons = [
+                [InlineKeyboardButton("❓ Edit Question", callback_data=f"edit_question_{flashcard_id}")],
+                [InlineKeyboardButton("📋 Edit Options", callback_data=f"edit_options_{flashcard_id}")],
+                [InlineKeyboardButton("✅ Edit Correct Answer", callback_data=f"edit_correct_{flashcard_id}")],
+                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
+                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
+            ]
+        
+        keyboard = InlineKeyboardMarkup(edit_buttons)
+        
+        await query.edit_message_text(
+            f"✏️ *Edit Flashcard*\n\n"
+            f"📋 *Current:* {flashcard.title}\n\n"
+            f"What would you like to edit?",
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"Error handling edit flashcard: {e}")
+        await query.edit_message_text("❌ Error opening editor. Please try again.")
+
+async def handle_delete_flashcard(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Handle flashcard deletion with confirmation."""
+    try:
+        # Get the flashcard from database
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        
+        if not flashcard:
+            await query.edit_message_text("❌ Flashcard not found.")
+            return
+        
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        confirm_buttons = [
+            [
+                InlineKeyboardButton("⚠️ Yes, Delete", callback_data=f"confirm_delete_{flashcard_id}"),
+                InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_delete_{flashcard_id}")
+            ]
+        ]
+        keyboard = InlineKeyboardMarkup(confirm_buttons)
+        
+        await query.edit_message_text(
+            f"🗑️ *Delete Flashcard?*\n\n"
+            f"📋 *Card:* {flashcard.title}\n\n"
+            f"⚠️ This action cannot be undone. Are you sure?",
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"Error handling delete flashcard: {e}")
+        await query.edit_message_text("❌ Error preparing deletion. Please try again.")
+
+async def handle_show_answer(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Show the answer for non-multiple choice cards."""
+    try:
+        # Get user session
+        user_id = query.from_user.id
+        session = user_sessions.get(user_id)
+        
+        if session and session.get('learning_mode') and session.get('current_flashcard'):
+            current_flashcard = session['current_flashcard']
+            
+            if str(current_flashcard.id) == flashcard_id:
+                # Update session stats
+                session['total_questions'] += 1
+                
+                # Show the answer
+                if isinstance(current_flashcard, TwoSidedCard):
+                    answer_text = current_flashcard.back
+                elif isinstance(current_flashcard, FillInTheBlank):
+                    answer_text = ", ".join(current_flashcard.answers)
+                else:
+                    answer_text = "Answer not available"
+                
+                # Update flashcard as "seen" (neutral review)
+                flashcard_service.update_flashcard_after_review(current_flashcard, True)
+                
+                await query.edit_message_text(
+                    f"{query.message.text}\n\n"
+                    f"💡 *Answer:* {answer_text}\n\n"
+                    f"Moving to next question...",
+                    parse_mode='Markdown'
+                )
+                
+                # Ask next question after delay
+                import asyncio
+                await asyncio.sleep(2)
+                await ask_next_question_after_callback(query, context)
+            else:
+                await query.edit_message_text("❌ Error: Question has changed.")
+        else:
+            await query.edit_message_text("❌ Error: No active learning session.")
+            
+    except Exception as e:
+        logger.error(f"Error showing answer: {e}")
+        await query.edit_message_text("❌ Error showing answer. Please try again.")
+
+async def handle_confirm_delete(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Confirm and execute flashcard deletion."""
+    try:
+        success = flashcard_service.db.delete_flashcard(flashcard_id)
+        
+        if success:
+            await query.edit_message_text(
+                "✅ *Flashcard Deleted Successfully*\n\n"
+                "The flashcard has been permanently removed from your collection.",
+                parse_mode='Markdown'
+            )
+            
+            # If in learning mode, continue to next question
+            user_id = query.from_user.id
+            session = user_sessions.get(user_id)
+            if session and session.get('learning_mode'):
+                import asyncio
+                await asyncio.sleep(1.5)
+                await ask_next_question_after_callback(query, context)
+        else:
+            await query.edit_message_text("❌ Failed to delete flashcard. Please try again.")
+            
+    except Exception as e:
+        logger.error(f"Error confirming delete: {e}")
+        await query.edit_message_text("❌ Error deleting flashcard. Please try again.")
+
+async def handle_cancel_delete(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Cancel flashcard deletion and return to question."""
+    try:
+        user_id = query.from_user.id
+        session = user_sessions.get(user_id)
+        
+        if session and session.get('learning_mode') and session.get('current_flashcard'):
+            current_flashcard = session['current_flashcard']
+            
+            if str(current_flashcard.id) == flashcard_id:
+                # Return to the original question
+                question_text, keyboard = flashcard_service.format_question_for_bot(current_flashcard)
+                
+                try:
+                    await query.edit_message_text(
+                        question_text,
+                        parse_mode='Markdown',
+                        reply_markup=keyboard
+                    )
+                except Exception as markdown_error:
+                    logger.warning(f"Markdown parsing failed: {markdown_error}")
+                    await query.edit_message_text(
+                        question_text,
+                        reply_markup=keyboard
+                    )
+            else:
+                await query.edit_message_text("❌ Error: Question has changed.")
+        else:
+            await query.edit_message_text("❌ Error: No active learning session.")
+            
+    except Exception as e:
+        logger.error(f"Error canceling delete: {e}")
+        await query.edit_message_text("❌ Error returning to question. Please try again.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Route messages between learning mode and normal grammar analysis."""

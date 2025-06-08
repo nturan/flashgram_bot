@@ -55,26 +55,37 @@ class FlashcardService:
         try:
             if isinstance(flashcard, TwoSidedCard):
                 text = f"📝 *Two-sided Card*\n\n{flashcard.front}"
-                return text, None
+                keyboard = self._create_edit_delete_keyboard(flashcard)
+                return text, keyboard
             
             elif isinstance(flashcard, FillInTheBlank):
                 question = flashcard.get_question()
-                blank_count = flashcard.get_blank_count()
                 
                 # Escape markdown special characters in the question
                 escaped_question = self._escape_markdown(question)
                 
+                # Get the grammatical form hint from metadata
+                form_hint = "the missing ending"
+                if hasattr(flashcard, 'metadata') and flashcard.metadata:
+                    grammatical_key = flashcard.metadata.get('grammatical_key', '')
+                    dictionary_form = flashcard.metadata.get('dictionary_form', '')
+                    if grammatical_key and dictionary_form:
+                        form_hint = f"{grammatical_key} of '{dictionary_form}'"
+                
                 text = (f"📝 *Fill in the Blank*\n\n{escaped_question}\n\n"
-                       f"💡 *Hint:* Fill in {blank_count} blank{'s' if blank_count > 1 else ''}")
-                return text, None
+                       f"💡 *Hint:* Complete the {form_hint}")
+                
+                # Create keyboard with edit/delete buttons
+                keyboard = self._create_edit_delete_keyboard(flashcard)
+                return text, keyboard
             
             elif isinstance(flashcard, MultipleChoice):
                 question = flashcard.get_question()
                 choice_type = "multiple answers" if flashcard.allow_multiple else "one answer"
                 text = f"📝 *Multiple Choice* (select {choice_type})\n\n{question}"
                 
-                # Create inline keyboard with options
-                keyboard = self._create_multiple_choice_keyboard(flashcard)
+                # Create inline keyboard with options and edit/delete buttons
+                keyboard = self._create_multiple_choice_keyboard_with_controls(flashcard)
                 return text, keyboard
             
             else:
@@ -103,6 +114,56 @@ class FlashcardService:
             
         except Exception as e:
             logger.error(f"Error creating multiple choice keyboard: {e}")
+            return None
+    
+    def _create_multiple_choice_keyboard_with_controls(self, flashcard: MultipleChoice):
+        """Create inline keyboard for multiple choice questions with edit/delete controls."""
+        try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
+            buttons = []
+            
+            # Add option buttons
+            for i, option in enumerate(flashcard.options):
+                callback_data = f"mc_{flashcard.id}_{i}"
+                button = InlineKeyboardButton(
+                    text=f"{chr(65 + i)}. {option}",  # A, B, C, etc.
+                    callback_data=callback_data
+                )
+                buttons.append([button])  # Each button on its own row
+            
+            # Add control buttons row
+            control_buttons = [
+                InlineKeyboardButton("✏️ Edit", callback_data=f"edit_{flashcard.id}"),
+                InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_{flashcard.id}")
+            ]
+            buttons.append(control_buttons)
+            
+            return InlineKeyboardMarkup(buttons)
+            
+        except Exception as e:
+            logger.error(f"Error creating multiple choice keyboard with controls: {e}")
+            return None
+    
+    def _create_edit_delete_keyboard(self, flashcard):
+        """Create inline keyboard with edit and delete buttons for non-multiple choice cards."""
+        try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
+            buttons = [
+                [
+                    InlineKeyboardButton("✏️ Edit Card", callback_data=f"edit_{flashcard.id}"),
+                    InlineKeyboardButton("🗑️ Delete Card", callback_data=f"delete_{flashcard.id}")
+                ],
+                [
+                    InlineKeyboardButton("📝 Answer", callback_data=f"answer_{flashcard.id}")
+                ]
+            ]
+            
+            return InlineKeyboardMarkup(buttons)
+            
+        except Exception as e:
+            logger.error(f"Error creating edit/delete keyboard: {e}")
             return None
     
     def _escape_markdown(self, text: str) -> str:
