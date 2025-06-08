@@ -350,25 +350,26 @@ async def handle_show_answer(query, context: ContextTypes.DEFAULT_TYPE, flashcar
                 # Update flashcard as "seen" (neutral review)
                 flashcard_service.update_flashcard_after_review(current_flashcard, True)
                 
-                # Escape markdown characters safely
-                from app.common.text_processing import escape_markdown
-                escaped_answer = escape_markdown(answer_text)
+                # Use safe markdown utility to handle the entire message
+                from app.common.telegram_utils import safe_send_markdown
                 
-                try:
-                    await query.edit_message_text(
-                        f"{query.message.text}\n\n"
-                        f"💡 *Answer:* {escaped_answer}\n\n"
-                        f"Moving to next question...",
-                        parse_mode='Markdown'
-                    )
-                except Exception as markdown_error:
-                    logger.warning(f"Markdown parsing failed in show answer: {markdown_error}")
-                    # Fallback to plain text
-                    await query.edit_message_text(
-                        f"{query.message.text}\n\n"
-                        f"💡 Answer: {answer_text}\n\n"
-                        f"Moving to next question..."
-                    )
+                # Get the original question text without markdown formatting
+                original_text = query.message.text
+                # Strip any existing markdown formatting for clean display
+                import re
+                clean_text = re.sub(r'[*_`\[\]()]', '', original_text)
+                
+                response_text = (
+                    f"{clean_text}\n\n"
+                    f"💡 *Answer:* {answer_text}\n\n"
+                    f"Moving to next question..."
+                )
+                
+                # Create a new message instead of editing to avoid markdown conflicts
+                await query.message.reply_text(
+                    response_text,
+                    parse_mode=None  # Use plain text to avoid any markdown issues
+                )
                 
                 # Ask next question after delay
                 import asyncio
