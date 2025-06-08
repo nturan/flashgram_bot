@@ -374,11 +374,19 @@ async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Format question for display
             question_text, keyboard = flashcard_service.format_question_for_bot(flashcard)
             
-            await update.message.reply_text(
-                question_text,
-                parse_mode='Markdown',
-                reply_markup=keyboard
-            )
+            # Try to send with markdown, fallback to plain text if it fails
+            try:
+                await update.message.reply_text(
+                    question_text,
+                    parse_mode='Markdown',
+                    reply_markup=keyboard
+                )
+            except Exception as markdown_error:
+                logger.warning(f"Markdown parsing failed for question: {markdown_error}. Sending as plain text.")
+                await update.message.reply_text(
+                    question_text,
+                    reply_markup=keyboard
+                )
         else:
             # No more questions - end the session
             score = session.get('score', 0)
@@ -538,11 +546,19 @@ async def ask_next_question_after_callback(query, context: ContextTypes.DEFAULT_
             # Format question for display
             question_text, keyboard = flashcard_service.format_question_for_bot(flashcard)
             
-            await query.message.reply_text(
-                question_text,
-                parse_mode='Markdown',
-                reply_markup=keyboard
-            )
+            # Try to send with markdown, fallback to plain text if it fails
+            try:
+                await query.message.reply_text(
+                    question_text,
+                    parse_mode='Markdown',
+                    reply_markup=keyboard
+                )
+            except Exception as markdown_error:
+                logger.warning(f"Markdown parsing failed for callback question: {markdown_error}. Sending as plain text.")
+                await query.message.reply_text(
+                    question_text,
+                    reply_markup=keyboard
+                )
         else:
             # No more questions - end the session
             score = session.get('score', 0)

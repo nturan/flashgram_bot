@@ -60,7 +60,11 @@ class FlashcardService:
             elif isinstance(flashcard, FillInTheBlank):
                 question = flashcard.get_question()
                 blank_count = flashcard.get_blank_count()
-                text = (f"📝 *Fill in the Blank*\n\n{question}\n\n"
+                
+                # Escape markdown special characters in the question
+                escaped_question = self._escape_markdown(question)
+                
+                text = (f"📝 *Fill in the Blank*\n\n{escaped_question}\n\n"
                        f"💡 *Hint:* Fill in {blank_count} blank{'s' if blank_count > 1 else ''}")
                 return text, None
             
@@ -100,6 +104,22 @@ class FlashcardService:
         except Exception as e:
             logger.error(f"Error creating multiple choice keyboard: {e}")
             return None
+    
+    def _escape_markdown(self, text: str) -> str:
+        """Escape markdown special characters to prevent parsing errors."""
+        try:
+            # Characters that need escaping in Telegram markdown
+            special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+            
+            escaped_text = text
+            for char in special_chars:
+                escaped_text = escaped_text.replace(char, f'\\{char}')
+            
+            return escaped_text
+        except Exception as e:
+            logger.error(f"Error escaping markdown: {e}")
+            # Return plain text if escaping fails
+            return text
     
     def check_answer(self, flashcard: FlashcardUnion, user_input: str) -> Tuple[bool, str]:
         """
