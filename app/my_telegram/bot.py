@@ -548,6 +548,16 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             flashcard_id = callback_data.split("_", 2)[2]
             await handle_cancel_edit(query, context, flashcard_id)
         
+        elif callback_data.startswith("regen_sentence_"):
+            # Regenerate sentence with LLM
+            flashcard_id = callback_data.split("_", 2)[2]
+            await handle_regenerate_sentence(query, context, flashcard_id)
+        
+        elif callback_data.startswith("regen_no_hint_"):
+            # Regenerate sentence without hint
+            flashcard_id = callback_data.split("_", 3)[3]
+            await regenerate_flashcard_sentence(query, flashcard_id, None)
+        
         else:
             await query.edit_message_text(
                 text="❌ Error: Unknown callback type."
@@ -656,8 +666,14 @@ async def handle_edit_flashcard(query, context: ContextTypes.DEFAULT_TYPE, flash
         
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         
-        cancel_button = [[InlineKeyboardButton("❌ Cancel Edit", callback_data=f"cancel_edit_{flashcard_id}")]]
-        keyboard = InlineKeyboardMarkup(cancel_button)
+        buttons = []
+        
+        # Add regenerate sentence option for fill-in-blank cards
+        if isinstance(flashcard, FillInTheBlank):
+            buttons.append([InlineKeyboardButton("🔄 Regenerate Sentence", callback_data=f"regen_sentence_{flashcard_id}")])
+        
+        buttons.append([InlineKeyboardButton("❌ Cancel Edit", callback_data=f"cancel_edit_{flashcard_id}")])
+        keyboard = InlineKeyboardMarkup(buttons)
         
         await query.edit_message_text(
             f"✏️ *Edit Flashcard*\n\n"
@@ -942,13 +958,292 @@ async def process_flashcard_edit(update: Update, context: ContextTypes.DEFAULT_T
         logger.error(f"Error processing flashcard edit: {e}")
         await update.message.reply_text("❌ Error updating flashcard. Please try again.")
 
+async def handle_regenerate_sentence(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Handle LLM-powered sentence regeneration for fill-in-blank cards."""
+    try:
+        # Get the flashcard from database
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        
+        if not flashcard or not isinstance(flashcard, FillInTheBlank):
+            await query.edit_message_text("❌ Error: Fill-in-blank flashcard not found.")
+            return
+        
+        # Set user in regeneration mode
+        user_id = query.from_user.id
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        
+        user_sessions[user_id]['regenerating_mode'] = True
+        user_sessions[user_id]['regenerating_flashcard_id'] = flashcard_id
+        
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        # Option to regenerate without hint or provide a hint
+        buttons = [
+            [InlineKeyboardButton("🎲 Generate New Sentence", callback_data=f"regen_no_hint_{flashcard_id}")],
+            [InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_edit_{flashcard_id}")]
+        ]
+        keyboard = InlineKeyboardMarkup(buttons)
+        
+        # Extract metadata for context
+        metadata = flashcard.metadata or {}
+        dictionary_form = metadata.get('dictionary_form', 'unknown word')
+        grammatical_key = metadata.get('grammatical_key', 'grammatical form')
+        
+        await query.edit_message_text(
+            f"🔄 *Regenerate Sentence*\n\n"
+            f"📋 *Current:* {flashcard.title}\n"
+            f"📝 *Word:* {dictionary_form}\n"
+            f"🎯 *Form:* {grammatical_key}\n\n"
+            f"Choose an option:\n"
+            f"• Click 'Generate New Sentence' for a random new sentence\n"
+            f"• Or type a hint/context (e.g., 'about cooking', 'at school', 'family context') and I'll create a sentence with that theme",
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"Error handling regenerate sentence: {e}")
+        await query.edit_message_text("❌ Error setting up regeneration. Please try again.")
+
+async def process_regeneration_hint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process user hint for sentence regeneration."""
+    user_id = update.effective_user.id
+    session = user_sessions.get(user_id)
+    
+    if not session or not session.get('regenerating_mode'):
+        return
+    
+    flashcard_id = session.get('regenerating_flashcard_id')
+    if not flashcard_id:
+        await update.message.reply_text("❌ Error: No flashcard being regenerated.")
+        return
+    
+    hint = update.message.text.strip()
+    
+    # Generate new sentence with hint
+    await regenerate_flashcard_sentence(update, flashcard_id, hint)
+
+async def regenerate_flashcard_sentence(update_or_query, flashcard_id: str, hint: str = None) -> None:
+    """Regenerate the sentence for a fill-in-blank flashcard using LLM."""
+    try:
+        # Get the flashcard from database
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        
+        if not flashcard or not isinstance(flashcard, FillInTheBlank):
+            message_text = "❌ Error: Fill-in-blank flashcard not found."
+            if hasattr(update_or_query, 'edit_message_text'):
+                await update_or_query.edit_message_text(message_text)
+            else:
+                await update_or_query.message.reply_text(message_text)
+            return
+        
+        # Extract metadata
+        metadata = flashcard.metadata or {}
+        dictionary_form = metadata.get('dictionary_form', 'unknown')
+        grammatical_key = metadata.get('grammatical_key', 'grammatical form')
+        
+        # Get the target form from the current sentence
+        current_sentence = flashcard.text_with_blanks
+        answers = flashcard.answers
+        
+        # Try to reconstruct the target form
+        if answers and len(answers) > 0:
+            # Find the stem by looking at the blank position
+            blank_pos = current_sentence.find('{blank}')
+            if blank_pos > 0:
+                # Look backwards to find word start
+                stem_start = blank_pos
+                while stem_start > 0 and current_sentence[stem_start - 1].isalpha():
+                    stem_start -= 1
+                stem = current_sentence[stem_start:blank_pos]
+                target_form = stem + answers[0]
+            else:
+                target_form = dictionary_form
+        else:
+            target_form = dictionary_form
+        
+        # Generate new sentence using the LLM
+        from app.my_graph.flashcard_generator import flashcard_generator
+        
+        # Build prompt with optional hint
+        hint_context = f" with context about {hint}" if hint else ""
+        new_sentence = flashcard_generator._generate_example_sentence(
+            dictionary_form, target_form, grammatical_key, "word"
+        )
+        
+        # If hint was provided, try to generate a more contextual sentence
+        if hint:
+            try:
+                from langchain_core.messages import HumanMessage
+                prompt = f"""Generate a simple, natural Russian sentence that uses the word "{target_form}" ({grammatical_key} form of "{dictionary_form}") in the context of {hint}.
+
+Requirements:
+- The sentence should be 6-12 words long
+- Use everyday, conversational Russian
+- The context should relate to: {hint}
+- Focus on common, practical usage
+- Avoid special punctuation (no quotes, parentheses, asterisks, underscores)
+- Use only basic punctuation: periods, commas, exclamation marks, question marks
+- Return ONLY the Russian sentence, nothing else
+
+Example format: "Я читаю интересную книгу в библиотеке."
+"""
+                
+                response = flashcard_generator.llm.invoke([HumanMessage(content=prompt)])
+                hint_sentence = response.content.strip()
+                hint_sentence = flashcard_generator._clean_sentence_for_telegram(hint_sentence)
+                
+                # Use the hint-based sentence if it contains the target form
+                if target_form.lower() in hint_sentence.lower():
+                    new_sentence = hint_sentence
+                    
+            except Exception as llm_error:
+                logger.warning(f"LLM hint generation failed: {llm_error}, using default generation")
+        
+        # Extract stem and suffix for the new sentence
+        stem, suffix = flashcard_generator._extract_suffix(dictionary_form, target_form)
+        
+        # Create the sentence with masked suffix
+        masked_word = f"{stem}{{blank}}"
+        sentence_with_blank = new_sentence.replace(target_form, masked_word)
+        
+        # If replacement didn't work, try case-insensitive approach
+        if "{blank}" not in sentence_with_blank:
+            words = new_sentence.split()
+            for i, word in enumerate(words):
+                clean_word = word.lower().replace(".", "").replace(",", "").replace("!", "").replace("?", "")
+                if clean_word == target_form.lower():
+                    punctuation = ""
+                    for punct in ".,!?":
+                        if word.endswith(punct):
+                            punctuation = punct
+                            break
+                    words[i] = f"{stem}{{blank}}{punctuation}"
+                    sentence_with_blank = " ".join(words)
+                    break
+            
+            # If still no blank, add it at the end
+            if "{blank}" not in sentence_with_blank:
+                sentence_with_blank = f"{new_sentence} ({stem}{{blank}})"
+        
+        # Update the flashcard in database
+        updates = {
+            "text_with_blanks": sentence_with_blank,
+            "answers": [suffix]
+        }
+        
+        success = flashcard_service.db.update_flashcard(flashcard_id, updates)
+        
+        if success:
+            # Clear regeneration mode
+            if hasattr(update_or_query, 'from_user'):
+                user_id = update_or_query.from_user.id
+            else:
+                user_id = update_or_query.message.from_user.id if update_or_query.message else None
+            
+            if user_id and user_id in user_sessions:
+                session = user_sessions[user_id]
+                session.pop('regenerating_mode', None)
+                session.pop('regenerating_flashcard_id', None)
+            
+            # Show the updated flashcard
+            display_text = sentence_with_blank.replace("{blank}", "_____")
+            
+            # Escape markdown special characters
+            escaped_display = flashcard_service._escape_markdown(display_text)
+            escaped_suffix = flashcard_service._escape_markdown(suffix)
+            escaped_hint = flashcard_service._escape_markdown(hint) if hint else ""
+            
+            message_text = (
+                f"✅ *Sentence Regenerated!*\n\n"
+                f"📝 *New Question:*\n{escaped_display}\n\n"
+                f"💡 *Answer:* {escaped_suffix}\n\n"
+                f"The flashcard has been updated in the database."
+            )
+            
+            if hint:
+                message_text += f"\n\n🎯 *Used hint:* {escaped_hint}"
+            
+            # Try markdown first, fallback to plain text
+            try:
+                if hasattr(update_or_query, 'edit_message_text'):
+                    await update_or_query.edit_message_text(message_text, parse_mode='Markdown')
+                else:
+                    await update_or_query.message.reply_text(message_text, parse_mode='Markdown')
+            except Exception as markdown_error:
+                logger.warning(f"Markdown parsing failed in regeneration: {markdown_error}")
+                # Fallback to plain text
+                plain_message = (
+                    f"✅ Sentence Regenerated!\n\n"
+                    f"📝 New Question:\n{display_text}\n\n"
+                    f"💡 Answer: {suffix}\n\n"
+                    f"The flashcard has been updated in the database."
+                )
+                
+                if hint:
+                    plain_message += f"\n\n🎯 Used hint: {hint}"
+                
+                if hasattr(update_or_query, 'edit_message_text'):
+                    await update_or_query.edit_message_text(plain_message)
+                else:
+                    await update_or_query.message.reply_text(plain_message)
+                
+            # If in learning mode, update the current flashcard and continue
+            if user_id and user_id in user_sessions:
+                session = user_sessions[user_id]
+                if session.get('learning_mode') and session.get('current_flashcard'):
+                    current_fc = session['current_flashcard']
+                    if str(current_fc.id) == flashcard_id:
+                        # Get updated flashcard and continue learning
+                        updated_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+                        if updated_flashcard:
+                            session['current_flashcard'] = updated_flashcard
+                            
+                            # Show the updated question after a delay
+                            import asyncio
+                            await asyncio.sleep(2)
+                            question_text, keyboard = flashcard_service.format_question_for_bot(updated_flashcard)
+                            
+                            try:
+                                if hasattr(update_or_query, 'message'):
+                                    await update_or_query.message.reply_text(
+                                        f"📝 *Continue Learning:*\n\n{question_text}",
+                                        parse_mode='Markdown',
+                                        reply_markup=keyboard
+                                    )
+                            except Exception as markdown_error:
+                                logger.warning(f"Markdown parsing failed in continue learning: {markdown_error}")
+                                if hasattr(update_or_query, 'message'):
+                                    await update_or_query.message.reply_text(
+                                        f"📝 Continue Learning:\n\n{question_text}",
+                                        reply_markup=keyboard
+                                    )
+        else:
+            message_text = "❌ Failed to update flashcard. Please try again."
+            if hasattr(update_or_query, 'edit_message_text'):
+                await update_or_query.edit_message_text(message_text)
+            else:
+                await update_or_query.message.reply_text(message_text)
+            
+    except Exception as e:
+        logger.error(f"Error regenerating sentence: {e}")
+        message_text = "❌ Error regenerating sentence. Please try again."
+        if hasattr(update_or_query, 'edit_message_text'):
+            await update_or_query.edit_message_text(message_text)
+        else:
+            await update_or_query.message.reply_text(message_text)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Route messages between learning mode, editing mode, and normal grammar analysis."""
     user_id = update.effective_user.id
     session = user_sessions.get(user_id)
     
+    # Check if user is in regeneration mode
+    if session and session.get('regenerating_mode'):
+        await process_regeneration_hint(update, context)
     # Check if user is in editing mode
-    if session and session.get('editing_mode'):
+    elif session and session.get('editing_mode'):
         await process_flashcard_edit(update, context)
     # Check if user is in learning mode
     elif session and session.get('learning_mode') and session.get('current_flashcard'):
