@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # This will be initialized in init_application
 russian_tutor: Optional[RussianTutor] = None
 
-# User session data to track learn mode
+# User session data to track learn mode and editing
 user_sessions: Dict[int, Dict[str, Any]] = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -543,6 +543,11 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             flashcard_id = callback_data.split("_", 2)[2]
             await handle_cancel_delete(query, context, flashcard_id)
         
+        elif callback_data.startswith("cancel_edit_"):
+            # Cancel editing
+            flashcard_id = callback_data.split("_", 2)[2]
+            await handle_cancel_edit(query, context, flashcard_id)
+        
         else:
             await query.edit_message_text(
                 text="❌ Error: Unknown callback type."
@@ -605,7 +610,7 @@ async def ask_next_question_after_callback(query, context: ContextTypes.DEFAULT_
         await query.message.reply_text("❌ Error loading next question. Please try /learn again.")
 
 async def handle_edit_flashcard(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
-    """Handle flashcard editing with a creative UX."""
+    """Handle flashcard editing with JSON input."""
     try:
         # Get the flashcard from database
         flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
@@ -614,41 +619,55 @@ async def handle_edit_flashcard(query, context: ContextTypes.DEFAULT_TYPE, flash
             await query.edit_message_text("❌ Flashcard not found.")
             return
         
-        # Create editing options based on flashcard type
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        # Set user in editing mode
+        user_id = query.from_user.id
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
         
-        edit_buttons = []
+        user_sessions[user_id]['editing_mode'] = True
+        user_sessions[user_id]['editing_flashcard_id'] = flashcard_id
+        
+        # Extract only the essential editable fields based on card type
+        edit_data = {}
         
         if isinstance(flashcard, TwoSidedCard):
-            edit_buttons = [
-                [InlineKeyboardButton("📝 Edit Question", callback_data=f"edit_front_{flashcard_id}")],
-                [InlineKeyboardButton("💡 Edit Answer", callback_data=f"edit_back_{flashcard_id}")],
-                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
-                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
-            ]
+            edit_data = {
+                "front": flashcard.front,
+                "back": flashcard.back,
+                "title": flashcard.title
+            }
         elif isinstance(flashcard, FillInTheBlank):
-            edit_buttons = [
-                [InlineKeyboardButton("📝 Edit Sentence", callback_data=f"edit_sentence_{flashcard_id}")],
-                [InlineKeyboardButton("🎯 Edit Answer", callback_data=f"edit_answer_{flashcard_id}")],
-                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
-                [InlineKeyboardButton("🔄 Regenerate Sentence", callback_data=f"regen_sentence_{flashcard_id}")],
-                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
-            ]
+            edit_data = {
+                "text_with_blanks": flashcard.text_with_blanks,
+                "answers": flashcard.answers,
+                "title": flashcard.title
+            }
         elif isinstance(flashcard, MultipleChoice):
-            edit_buttons = [
-                [InlineKeyboardButton("❓ Edit Question", callback_data=f"edit_question_{flashcard_id}")],
-                [InlineKeyboardButton("📋 Edit Options", callback_data=f"edit_options_{flashcard_id}")],
-                [InlineKeyboardButton("✅ Edit Correct Answer", callback_data=f"edit_correct_{flashcard_id}")],
-                [InlineKeyboardButton("🏷️ Edit Title", callback_data=f"edit_title_{flashcard_id}")],
-                [InlineKeyboardButton("🔙 Back to Question", callback_data=f"back_to_question_{flashcard_id}")]
-            ]
+            edit_data = {
+                "question": flashcard.question,
+                "options": flashcard.options,
+                "correct_indices": flashcard.correct_indices,
+                "title": flashcard.title
+            }
         
-        keyboard = InlineKeyboardMarkup(edit_buttons)
+        # Format JSON nicely
+        import json
+        json_text = json.dumps(edit_data, indent=2, ensure_ascii=False)
+        
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        cancel_button = [[InlineKeyboardButton("❌ Cancel Edit", callback_data=f"cancel_edit_{flashcard_id}")]]
+        keyboard = InlineKeyboardMarkup(cancel_button)
         
         await query.edit_message_text(
             f"✏️ *Edit Flashcard*\n\n"
-            f"📋 *Current:* {flashcard.title}\n\n"
-            f"What would you like to edit?",
+            f"📋 Please copy the JSON below, edit it, and send it back:\n\n"
+            f"```json\n{json_text}\n```\n\n"
+            f"💡 *Instructions:*\n"
+            f"• Copy the JSON text above\n"
+            f"• Edit the fields you want to change\n"
+            f"• Send the modified JSON back to me\n"
+            f"• I'll validate and update the flashcard",
             parse_mode='Markdown',
             reply_markup=keyboard
         )
@@ -794,13 +813,145 @@ async def handle_cancel_delete(query, context: ContextTypes.DEFAULT_TYPE, flashc
         logger.error(f"Error canceling delete: {e}")
         await query.edit_message_text("❌ Error returning to question. Please try again.")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Route messages between learning mode and normal grammar analysis."""
+async def handle_cancel_edit(query, context: ContextTypes.DEFAULT_TYPE, flashcard_id: str) -> None:
+    """Cancel flashcard editing and return to question."""
+    try:
+        user_id = query.from_user.id
+        session = user_sessions.get(user_id)
+        
+        if session:
+            # Clear editing mode
+            session.pop('editing_mode', None)
+            session.pop('editing_flashcard_id', None)
+        
+        # Return to the original question if in learning mode
+        if session and session.get('learning_mode') and session.get('current_flashcard'):
+            current_flashcard = session['current_flashcard']
+            
+            if str(current_flashcard.id) == flashcard_id:
+                question_text, keyboard = flashcard_service.format_question_for_bot(current_flashcard)
+                
+                try:
+                    await query.edit_message_text(
+                        question_text,
+                        parse_mode='Markdown',
+                        reply_markup=keyboard
+                    )
+                except Exception as markdown_error:
+                    logger.warning(f"Markdown parsing failed: {markdown_error}")
+                    await query.edit_message_text(
+                        question_text,
+                        reply_markup=keyboard
+                    )
+            else:
+                await query.edit_message_text("❌ Error: Question has changed.")
+        else:
+            await query.edit_message_text("✅ Edit canceled. You can continue using the bot normally.")
+            
+    except Exception as e:
+        logger.error(f"Error canceling edit: {e}")
+        await query.edit_message_text("❌ Error canceling edit. Please try again.")
+
+async def process_flashcard_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process JSON edit input from user."""
     user_id = update.effective_user.id
     session = user_sessions.get(user_id)
     
+    if not session or not session.get('editing_mode'):
+        return
+    
+    flashcard_id = session.get('editing_flashcard_id')
+    if not flashcard_id:
+        await update.message.reply_text("❌ Error: No flashcard being edited.")
+        return
+    
+    user_input = update.message.text.strip()
+    
+    try:
+        # Parse JSON input
+        import json
+        updated_data = json.loads(user_input)
+        
+        # Get the current flashcard to determine type and validate accordingly
+        current_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        if not current_flashcard:
+            await update.message.reply_text("❌ Error: Flashcard not found.")
+            return
+        
+        # Basic validation based on current flashcard type
+        if isinstance(current_flashcard, TwoSidedCard):
+            if not updated_data.get('front') or not updated_data.get('back'):
+                await update.message.reply_text("❌ Error: Two-sided cards need 'front' and 'back' fields.")
+                return
+        elif isinstance(current_flashcard, FillInTheBlank):
+            if not updated_data.get('text_with_blanks') or not updated_data.get('answers'):
+                await update.message.reply_text("❌ Error: Fill-in-blank cards need 'text_with_blanks' and 'answers' fields.")
+                return
+        elif isinstance(current_flashcard, MultipleChoice):
+            if not updated_data.get('question') or not updated_data.get('options') or not updated_data.get('correct_indices'):
+                await update.message.reply_text("❌ Error: Multiple choice cards need 'question', 'options', and 'correct_indices' fields.")
+                return
+        
+        # Update the flashcard in database
+        success = flashcard_service.db.update_flashcard(flashcard_id, updated_data)
+        
+        if success:
+            # Clear editing mode
+            session.pop('editing_mode', None)
+            session.pop('editing_flashcard_id', None)
+            
+            await update.message.reply_text(
+                "✅ *Flashcard Updated Successfully!*\n\n"
+                "Your changes have been saved to the database.",
+                parse_mode='Markdown'
+            )
+            
+            # If in learning mode, continue with the updated flashcard
+            if session.get('learning_mode'):
+                # Get the updated flashcard
+                updated_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+                if updated_flashcard and session.get('current_flashcard') and str(session['current_flashcard'].id) == flashcard_id:
+                    session['current_flashcard'] = updated_flashcard
+                    
+                    # Show the updated question
+                    question_text, keyboard = flashcard_service.format_question_for_bot(updated_flashcard)
+                    
+                    try:
+                        await update.message.reply_text(
+                            f"📝 *Updated Question:*\n\n{question_text}",
+                            parse_mode='Markdown',
+                            reply_markup=keyboard
+                        )
+                    except Exception as markdown_error:
+                        logger.warning(f"Markdown parsing failed: {markdown_error}")
+                        await update.message.reply_text(
+                            f"📝 Updated Question:\n\n{question_text}",
+                            reply_markup=keyboard
+                        )
+        else:
+            await update.message.reply_text("❌ Failed to update flashcard. Please try again.")
+            
+    except json.JSONDecodeError as e:
+        await update.message.reply_text(
+            f"❌ *Invalid JSON Format*\n\n"
+            f"Error: {str(e)}\n\n"
+            f"Please check your JSON syntax and try again.",
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error processing flashcard edit: {e}")
+        await update.message.reply_text("❌ Error updating flashcard. Please try again.")
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Route messages between learning mode, editing mode, and normal grammar analysis."""
+    user_id = update.effective_user.id
+    session = user_sessions.get(user_id)
+    
+    # Check if user is in editing mode
+    if session and session.get('editing_mode'):
+        await process_flashcard_edit(update, context)
     # Check if user is in learning mode
-    if session and session.get('learning_mode') and session.get('current_flashcard'):
+    elif session and session.get('learning_mode') and session.get('current_flashcard'):
         await process_answer(update, context)
     else:
         await process_russian_text(update, context)

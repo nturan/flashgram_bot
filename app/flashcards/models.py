@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Literal, Union, Dict, Any
 from datetime import datetime
 from enum import Enum
 
@@ -36,8 +36,9 @@ class BaseFlashcard(BaseModel):
     
     # Organization
     tags: List[str] = Field(default_factory=list, description="Tags for categorizing the flashcard")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata for the flashcard")
     
-    # Metadata
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now, description="When the card was created")
     updated_at: datetime = Field(default_factory=datetime.now, description="When the card was last updated")
     
