@@ -1,7 +1,7 @@
 import logging
 import random
 from typing import List, Optional, Tuple, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.flashcards.models import (
     FlashcardUnion, 
@@ -182,10 +182,7 @@ class FlashcardService:
                 new_ease_factor = max(1.3, flashcard.ease_factor - 0.2)
             
             # Calculate new due date
-            new_due_date = datetime.now()
-            new_due_date = new_due_date.replace(
-                hour=new_due_date.hour + (new_interval * 24)
-            )
+            new_due_date = datetime.now() + timedelta(days=new_interval)
             
             # Update in database
             return self.db.update_flashcard_stats(
@@ -223,6 +220,46 @@ class FlashcardService:
             
         except Exception as e:
             logger.error(f"Error getting flashcard stats: {e}")
+            return {}
+    
+    def get_dashboard_data(self) -> Dict[str, Any]:
+        """Get comprehensive dashboard data for the bot."""
+        try:
+            # Get basic dashboard stats
+            dashboard_stats = self.db.get_dashboard_stats()
+            
+            # Get recent activity
+            recent_activity = self.db.get_recent_activity_stats(days=7)
+            
+            # Combine data
+            dashboard_data = {
+                **dashboard_stats,
+                **recent_activity
+            }
+            
+            # Calculate additional metrics
+            total = dashboard_data.get("total", 0)
+            due_today = dashboard_data.get("due_today", 0)
+            new_cards = dashboard_data.get("new", 0)
+            
+            # Progress percentage
+            if total > 0:
+                progress_percentage = ((total - new_cards) / total) * 100
+                dashboard_data["progress_percentage"] = round(progress_percentage, 1)
+            else:
+                dashboard_data["progress_percentage"] = 0
+            
+            # Today's workload as percentage of total
+            if total > 0:
+                workload_percentage = (due_today / total) * 100
+                dashboard_data["workload_percentage"] = round(workload_percentage, 1)
+            else:
+                dashboard_data["workload_percentage"] = 0
+            
+            return dashboard_data
+            
+        except Exception as e:
+            logger.error(f"Error getting dashboard data: {e}")
             return {}
 
 # Global service instance

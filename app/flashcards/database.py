@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.config import settings
 from app.flashcards.models import (
@@ -263,6 +263,82 @@ class FlashcardDatabaseV2:
         except Exception as e:
             logger.error(f"Error retrieving tags: {e}")
             return []
+    
+    def get_dashboard_stats(self) -> Dict[str, int]:
+        """Get dashboard statistics for flashcards."""
+        try:
+            now = datetime.now()
+            today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+            week_end = now + timedelta(days=7)
+            
+            # Total flashcards
+            total_count = self.get_flashcard_count()
+            
+            # Due today
+            due_today = self.collection.count_documents({
+                "due_date": {"$lte": today_end}
+            })
+            
+            # Due this week
+            due_this_week = self.collection.count_documents({
+                "due_date": {"$lte": week_end}
+            })
+            
+            # New flashcards (never reviewed)
+            new_cards = self.collection.count_documents({
+                "times_reviewed": 0
+            })
+            
+            # Mastered flashcards (high ease factor and long intervals)
+            mastered_cards = self.collection.count_documents({
+                "ease_factor": {"$gte": 2.5},
+                "interval_days": {"$gte": 30}
+            })
+            
+            return {
+                "total": total_count,
+                "due_today": due_today,
+                "due_this_week": due_this_week,
+                "new": new_cards,
+                "mastered": mastered_cards
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting dashboard stats: {e}")
+            return {
+                "total": 0,
+                "due_today": 0,
+                "due_this_week": 0,
+                "new": 0,
+                "mastered": 0
+            }
+    
+    def get_recent_activity_stats(self, days: int = 7) -> Dict[str, int]:
+        """Get recent activity statistics."""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            # Cards added recently
+            recent_additions = self.collection.count_documents({
+                "created_at": {"$gte": cutoff_date}
+            })
+            
+            # Cards reviewed recently
+            recent_reviews = self.collection.count_documents({
+                "last_reviewed": {"$gte": cutoff_date}
+            })
+            
+            return {
+                "recent_additions": recent_additions,
+                "recent_reviews": recent_reviews
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting recent activity stats: {e}")
+            return {
+                "recent_additions": 0,
+                "recent_reviews": 0
+            }
     
     def close_connection(self):
         """Close the MongoDB connection."""

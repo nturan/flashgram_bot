@@ -20,6 +20,7 @@ from app.grammar.russian import (
   Adjective,
   Verb,
 )
+from app.my_graph.flashcard_generator import flashcard_generator
 
 class State(TypedDict):
     original_human_input: str
@@ -28,6 +29,9 @@ class State(TypedDict):
     adjective_grammar: Optional[Adjective]
     verb_grammar: Optional[Verb]
     final_answer: Optional[str]
+    generate_flashcards: Optional[bool]
+    flashcards_generated: Optional[int]
+    flashcard_generation_message: Optional[str]
 
 
 class RussianTutor:
@@ -134,6 +138,61 @@ class RussianTutor:
             "final_answer": result.model_dump_json(indent=2)
         }
 
+    def generate_flashcards(
+            self, state: State, writer: Optional[StreamWriter] = None, config: Optional[RunnableConfig] = None,
+    ) -> State:
+        """Generate flashcards from the grammar analysis results."""
+        if writer and hasattr(writer, 'write'):
+            writer.write("Generating flashcards...\n")
+
+        try:
+            flashcards = []
+            word_type = None
+            grammar_obj = None
+            
+            # Determine which grammar object to use
+            if state.get("noun_grammar"):
+                grammar_obj = state["noun_grammar"]
+                word_type = "noun"
+            elif state.get("adjective_grammar"):
+                grammar_obj = state["adjective_grammar"] 
+                word_type = "adjective"
+            elif state.get("verb_grammar"):
+                grammar_obj = state["verb_grammar"]
+                word_type = "verb"
+            
+            if grammar_obj and word_type:
+                # Generate flashcards
+                flashcards = flashcard_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
+                
+                # Save flashcards to database
+                saved_count = flashcard_generator.save_flashcards_to_database(flashcards)
+                
+                message = f"Generated and saved {saved_count}/{len(flashcards)} flashcards for '{grammar_obj.dictionary_form}'"
+                
+                return {
+                    **state,
+                    "flashcards_generated": saved_count,
+                    "flashcard_generation_message": message
+                }
+            else:
+                return {
+                    **state,
+                    "flashcards_generated": 0,
+                    "flashcard_generation_message": "No grammar data available for flashcard generation"
+                }
+                
+        except Exception as e:
+            error_message = f"Error generating flashcards: {str(e)}"
+            if writer and hasattr(writer, 'write'):
+                writer.write(f"{error_message}\n")
+                
+            return {
+                **state,
+                "flashcards_generated": 0,
+                "flashcard_generation_message": error_message
+            }
+
     def _build_graph(self) -> RunnableSerializable:
         """Build the LangGraph for the Russian language tutor"""
 
@@ -144,6 +203,7 @@ class RussianTutor:
         workflow.add_node("get_noun_grammar", self.get_noun_grammar)
         workflow.add_node("get_adjective_grammar", self.get_adjective_grammar)
         workflow.add_node("get_verb_grammar", self.get_verb_grammar)
+        workflow.add_node("flashcard_generation", self.generate_flashcards)
 
         # Define the edges
         workflow.add_edge(START, "initial_classification")
@@ -162,20 +222,24 @@ class RussianTutor:
             }
         )
 
-        # Connect noun grammar to END
-        workflow.add_edge("get_noun_grammar", END)
-
-        # Connect adjective grammar to END
-        workflow.add_edge("get_adjective_grammar", END)
-
-        # Connect verb grammar to END
-        workflow.add_edge("get_verb_grammar", END)
+        # Route from grammar nodes to either flashcard generation or END
+        def should_generate_flashcards(state):
+            return "flashcard_generation" if state.get("generate_flashcards") else "__end__"
+        
+        # Connect grammar nodes to conditional flashcard generation
+        workflow.add_conditional_edges("get_noun_grammar", should_generate_flashcards)
+        workflow.add_conditional_edges("get_adjective_grammar", should_generate_flashcards)
+        workflow.add_conditional_edges("get_verb_grammar", should_generate_flashcards)
+        
+        # Connect flashcard generation to END
+        workflow.add_edge("flashcard_generation", END)
 
         return workflow.compile()
 
     def invoke(
             self,
             input_text: str,
+            generate_flashcards: bool = False,
             config: Optional[RunnableConfig] = None
     ) -> Dict:
         """Run the language tutor graph with the given input"""
@@ -187,7 +251,10 @@ class RussianTutor:
             "noun_grammar": None,
             "adjective_grammar": None,
             "verb_grammar": None,
-            "final_answer": None
+            "final_answer": None,
+            "generate_flashcards": generate_flashcards,
+            "flashcards_generated": None,
+            "flashcard_generation_message": None
         }
 
         # Execute the graph
