@@ -49,29 +49,57 @@ class FlashcardService:
             logger.error(f"Error getting learning session flashcards: {e}")
             return []
     
-    def format_question_for_bot(self, flashcard: FlashcardUnion) -> str:
-        """Format a flashcard question for display in the Telegram bot."""
+    def format_question_for_bot(self, flashcard: FlashcardUnion) -> tuple[str, Optional[Any]]:
+        """Format a flashcard question for display in the Telegram bot.
+        Returns (question_text, optional_keyboard)"""
         try:
             if isinstance(flashcard, TwoSidedCard):
-                return f"📝 *Two-sided Card*\n\n{flashcard.front}"
+                text = f"📝 *Two-sided Card*\n\n{flashcard.front}"
+                return text, None
             
             elif isinstance(flashcard, FillInTheBlank):
                 question = flashcard.get_question()
                 blank_count = flashcard.get_blank_count()
-                return (f"📝 *Fill in the Blank*\n\n{question}\n\n"
+                text = (f"📝 *Fill in the Blank*\n\n{question}\n\n"
                        f"💡 *Hint:* Fill in {blank_count} blank{'s' if blank_count > 1 else ''}")
+                return text, None
             
             elif isinstance(flashcard, MultipleChoice):
                 question = flashcard.get_question()
                 choice_type = "multiple answers" if flashcard.allow_multiple else "one answer"
-                return f"📝 *Multiple Choice* (select {choice_type})\n\n{question}"
+                text = f"📝 *Multiple Choice* (select {choice_type})\n\n{question}"
+                
+                # Create inline keyboard with options
+                keyboard = self._create_multiple_choice_keyboard(flashcard)
+                return text, keyboard
             
             else:
-                return f"❓ Unknown flashcard type: {flashcard.type}"
+                return f"❓ Unknown flashcard type: {flashcard.type}", None
                 
         except Exception as e:
             logger.error(f"Error formatting question: {e}")
-            return "❌ Error displaying question"
+            return "❌ Error displaying question", None
+    
+    def _create_multiple_choice_keyboard(self, flashcard: MultipleChoice):
+        """Create inline keyboard for multiple choice questions."""
+        try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
+            buttons = []
+            for i, option in enumerate(flashcard.options):
+                # Create callback data with flashcard ID and option index
+                callback_data = f"mc_{flashcard.id}_{i}"
+                button = InlineKeyboardButton(
+                    text=f"{chr(65 + i)}. {option}",  # A, B, C, etc.
+                    callback_data=callback_data
+                )
+                buttons.append([button])  # Each button on its own row
+            
+            return InlineKeyboardMarkup(buttons)
+            
+        except Exception as e:
+            logger.error(f"Error creating multiple choice keyboard: {e}")
+            return None
     
     def check_answer(self, flashcard: FlashcardUnion, user_input: str) -> Tuple[bool, str]:
         """

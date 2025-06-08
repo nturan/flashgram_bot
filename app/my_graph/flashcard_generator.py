@@ -2,7 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from app.flashcards import TwoSidedCard, flashcard_service
+from app.flashcards import TwoSidedCard, MultipleChoice, flashcard_service
 from app.grammar.russian import Noun, Adjective, Verb
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class FlashcardGenerator:
     def __init__(self):
         self.service = flashcard_service
     
-    def generate_flashcards_from_grammar(self, grammar_obj: Any, word_type: str) -> List[TwoSidedCard]:
+    def generate_flashcards_from_grammar(self, grammar_obj: Any, word_type: str) -> List[Any]:
         """
         Generate flashcards from a grammar object (Noun, Adjective, or Verb).
         
@@ -41,7 +41,7 @@ class FlashcardGenerator:
             
         return flashcards
     
-    def _generate_noun_flashcards(self, noun: Noun) -> List[TwoSidedCard]:
+    def _generate_noun_flashcards(self, noun: Noun) -> List[Any]:
         """Generate flashcards for a Russian noun."""
         flashcards = []
         dictionary_form = noun.dictionary_form
@@ -89,7 +89,7 @@ class FlashcardGenerator:
         
         return flashcards
     
-    def _generate_adjective_flashcards(self, adjective: Adjective) -> List[TwoSidedCard]:
+    def _generate_adjective_flashcards(self, adjective: Adjective) -> List[Any]:
         """Generate flashcards for a Russian adjective."""
         flashcards = []
         dictionary_form = adjective.dictionary_form
@@ -178,21 +178,65 @@ class FlashcardGenerator:
         
         return flashcards
     
-    def _generate_verb_flashcards(self, verb: Verb) -> List[TwoSidedCard]:
+    def _generate_verb_flashcards(self, verb: Verb) -> List[Any]:
         """Generate flashcards for a Russian verb."""
         flashcards = []
         dictionary_form = verb.dictionary_form
         
-        # Generate aspect flashcard
-        flashcard = TwoSidedCard(
-            front=f"What is the aspect of '{dictionary_form}'?",
-            back=verb.aspect,
-            tags=["russian", "verb", "aspect", "grammar"],
-            title=f"{dictionary_form} - aspect"
-        )
-        flashcards.append(flashcard)
+        # Generate aspect multiple choice flashcard
+        aspect_options = ["perfective", "imperfective"]
+        correct_aspect_index = aspect_options.index(verb.aspect.lower())
         
-        # Generate conjugation flashcard
+        aspect_flashcard = MultipleChoice(
+            question=f"What is the aspect of '{dictionary_form}'?",
+            options=aspect_options,
+            correct_indices=[correct_aspect_index],
+            tags=["russian", "verb", "aspect", "grammar", "multiple_choice"],
+            title=f"{dictionary_form} - aspect (multiple choice)"
+        )
+        flashcards.append(aspect_flashcard)
+        
+        # Generate aspect pair multiple choice flashcard if it exists
+        if verb.aspect_pair and verb.aspect_pair.strip():
+            # Create multiple choice for which verb is perfective/imperfective
+            if verb.aspect.lower() == "perfective":
+                question = f"Which verb is the PERFECTIVE form?"
+                options = [dictionary_form, verb.aspect_pair]
+                correct_index = 0
+            else:
+                question = f"Which verb is the PERFECTIVE form?"
+                options = [verb.aspect_pair, dictionary_form]
+                correct_index = 0
+            
+            aspect_pair_flashcard = MultipleChoice(
+                question=question,
+                options=options,
+                correct_indices=[correct_index],
+                tags=["russian", "verb", "aspect_pair", "grammar", "multiple_choice"],
+                title=f"{dictionary_form} - aspect pair comparison"
+            )
+            flashcards.append(aspect_pair_flashcard)
+            
+            # Also create the opposite question (which is imperfective)
+            if verb.aspect.lower() == "perfective":
+                question_imp = f"Which verb is the IMPERFECTIVE form?"
+                options_imp = [dictionary_form, verb.aspect_pair]
+                correct_index_imp = 1
+            else:
+                question_imp = f"Which verb is the IMPERFECTIVE form?"
+                options_imp = [verb.aspect_pair, dictionary_form]
+                correct_index_imp = 1
+            
+            aspect_pair_flashcard_imp = MultipleChoice(
+                question=question_imp,
+                options=options_imp,
+                correct_indices=[correct_index_imp],
+                tags=["russian", "verb", "aspect_pair", "grammar", "multiple_choice"],
+                title=f"{dictionary_form} - aspect pair comparison (imperfective)"
+            )
+            flashcards.append(aspect_pair_flashcard_imp)
+        
+        # Generate conjugation flashcard (keep as two-sided)
         flashcard = TwoSidedCard(
             front=f"What conjugation type is '{dictionary_form}'?",
             back=verb.conjugation,
@@ -200,16 +244,6 @@ class FlashcardGenerator:
             title=f"{dictionary_form} - conjugation"
         )
         flashcards.append(flashcard)
-        
-        # Generate aspect pair flashcard if it exists
-        if verb.aspect_pair and verb.aspect_pair.strip():
-            flashcard = TwoSidedCard(
-                front=f"What is the aspect pair of '{dictionary_form}'?",
-                back=verb.aspect_pair,
-                tags=["russian", "verb", "aspect_pair", "grammar"],
-                title=f"{dictionary_form} - aspect pair"
-            )
-            flashcards.append(flashcard)
         
         # Generate present tense flashcards (for imperfective verbs)
         present_forms = {
@@ -290,7 +324,7 @@ class FlashcardGenerator:
         
         return flashcards
     
-    def save_flashcards_to_database(self, flashcards: List[TwoSidedCard]) -> int:
+    def save_flashcards_to_database(self, flashcards: List[Any]) -> int:
         """
         Save generated flashcards to the database.
         

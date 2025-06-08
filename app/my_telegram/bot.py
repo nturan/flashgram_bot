@@ -1,8 +1,9 @@
-from telegram import Update, ForceReply
+from telegram import Update, ForceReply, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
     ContextTypes,
 )
@@ -371,11 +372,12 @@ async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             session['current_flashcard'] = flashcard
             
             # Format question for display
-            question_text = flashcard_service.format_question_for_bot(flashcard)
+            question_text, keyboard = flashcard_service.format_question_for_bot(flashcard)
             
             await update.message.reply_text(
                 question_text,
-                parse_mode='Markdown'
+                parse_mode='Markdown',
+                reply_markup=keyboard
             )
         else:
             # No more questions - end the session
@@ -429,6 +431,137 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Ask next question
     await ask_next_question(update, context)
+
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle callback queries from inline keyboard buttons."""
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback query
+    
+    try:
+        # Parse callback data
+        callback_data = query.data
+        
+        if callback_data.startswith("mc_"):
+            # Multiple choice answer
+            parts = callback_data.split("_")
+            if len(parts) >= 3:
+                flashcard_id = parts[1]
+                selected_option = int(parts[2])
+                
+                # Get user session
+                user_id = query.from_user.id
+                session = user_sessions.get(user_id)
+                
+                if session and session.get('learning_mode') and session.get('current_flashcard'):
+                    current_flashcard = session['current_flashcard']
+                    
+                    # Verify this is the correct flashcard
+                    if str(current_flashcard.id) == flashcard_id:
+                        # Check the answer
+                        from app.flashcards.models import MultipleChoice
+                        if isinstance(current_flashcard, MultipleChoice):
+                            is_correct = selected_option in current_flashcard.correct_indices
+                            
+                            # Update session
+                            session['total_questions'] += 1
+                            if is_correct:
+                                session['score'] += 1
+                            
+                            # Update flashcard in database
+                            flashcard_service.update_flashcard_after_review(current_flashcard, is_correct)
+                            
+                            # Create feedback message
+                            selected_letter = chr(65 + selected_option)
+                            selected_text = current_flashcard.options[selected_option]
+                            
+                            if is_correct:
+                                feedback = f"✅ Correct! You selected {selected_letter}. {selected_text}"
+                            else:
+                                correct_indices = current_flashcard.correct_indices
+                                correct_letters = [chr(65 + i) for i in correct_indices]
+                                correct_texts = [current_flashcard.options[i] for i in correct_indices]
+                                feedback = f"❌ Incorrect. You selected {selected_letter}. {selected_text}\n"
+                                feedback += f"Correct answer: {', '.join(correct_letters)}. {', '.join(correct_texts)}"
+                            
+                            # Edit the message to show the result
+                            await query.edit_message_text(
+                                text=f"{query.message.text}\n\n{feedback}",
+                                parse_mode='Markdown'
+                            )
+                            
+                            # Ask next question after a short delay
+                            import asyncio
+                            await asyncio.sleep(1.5)
+                            await ask_next_question_after_callback(query, context)
+                            
+                        else:
+                            await query.edit_message_text(
+                                text="❌ Error: This is not a multiple choice question."
+                            )
+                    else:
+                        await query.edit_message_text(
+                            text="❌ Error: Question has changed. Please start a new learning session."
+                        )
+                else:
+                    await query.edit_message_text(
+                        text="❌ Error: No active learning session found."
+                    )
+            else:
+                await query.edit_message_text(
+                    text="❌ Error: Invalid callback data."
+                )
+        else:
+            await query.edit_message_text(
+                text="❌ Error: Unknown callback type."
+            )
+            
+    except Exception as e:
+        logger.error(f"Error handling callback query: {e}")
+        await query.edit_message_text(
+            text="❌ Error processing your answer. Please try again."
+        )
+
+async def ask_next_question_after_callback(query, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Ask the next flashcard question after a callback query."""
+    try:
+        user_id = query.from_user.id
+        session = user_sessions.get(user_id)
+        
+        if not session or not session.get('learning_mode'):
+            return
+        
+        if session['flashcards']:
+            # Get next flashcard
+            flashcard = session['flashcards'].pop(0)
+            session['current_flashcard'] = flashcard
+            
+            # Format question for display
+            question_text, keyboard = flashcard_service.format_question_for_bot(flashcard)
+            
+            await query.message.reply_text(
+                question_text,
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
+        else:
+            # No more questions - end the session
+            score = session.get('score', 0)
+            total = session.get('total_questions', 0)
+            
+            # Clear session to exit learning mode
+            del user_sessions[user_id]
+            
+            await query.message.reply_text(
+                f"🎉 *All questions completed!*\n\n"
+                f"📊 Final Score: {score}/{total}\n"
+                f"🎯 Accuracy: {(score/total*100):.1f}%\n\n" if total > 0 else ""
+                f"Back to normal mode. Send me a Russian word to analyze or type /learn to start another session!",
+                parse_mode='Markdown'
+            )
+            
+    except Exception as e:
+        logger.error(f"Error asking next question after callback: {e}")
+        await query.message.reply_text("❌ Error loading next question. Please try /learn again.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Route messages between learning mode and normal grammar analysis."""
@@ -555,6 +688,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     application.add_handler(CommandHandler("learn", learn_command))
     application.add_handler(CommandHandler("finish", finish_command))
     application.add_handler(CommandHandler("dbstatus", dbstatus_command))
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     return application
