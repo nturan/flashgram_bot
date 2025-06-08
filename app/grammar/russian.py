@@ -3,7 +3,7 @@ from typing import Literal, Dict, Optional
 
 Case = Literal["nom", "gen", "dat", "acc", "ins", "pre"]
 Gender = Literal["masculine", "feminine", "neuter"]
-WordType = Literal["noun", "verb", "adjective", "adverb", "preposition", "number"]
+WordType = Literal["noun", "verb", "adjective", "adverb", "preposition", "number", "pronoun"]
 Aspect = Literal["perfective", "imperfective", "both"]
 Person = Literal["first", "second", "third"]
 Number = Literal["singular", "plural"]
@@ -20,7 +20,7 @@ class WordClassification(BaseModel):
         return (
             "Your response must be valid JSON that matches this schema:\n"
             "{\n"
-            "  \"word_type\": \"noun\" | \"verb\" | \"adjective\" | \"adverb\" | \"preposition\" | \"number\",\n"
+            "  \"word_type\": \"noun\" | \"verb\" | \"adjective\" | \"adverb\" | \"preposition\" | \"number\" | \"pronoun\",\n"
             "  \"russian_word\": \"string (the Russian translation/form of the word)\",\n"
             "  \"original_word\": \"string (the original input word)\"\n"
             "}"
@@ -221,5 +221,103 @@ class Verb(BaseModel):
             "  \"past_gerund\": \"string or null (if exists)\"\n"
             "}\n"
             "Important: Use null for optional fields that don't exist or don't apply to this verb."
+        )
+
+
+class Pronoun(BaseModel):
+    dictionary_form: str
+    english_translation: str
+    pronoun_type: Literal["personal", "possessive", "demonstrative", "interrogative", "relative", "indefinite", "negative"]
+    
+    # Person and number (for personal pronouns)
+    person: Optional[Person] = None
+    number: Optional[Number] = None
+    
+    # Gender (some pronouns have gender, like он/она/оно)
+    gender: Optional[Gender] = None
+    
+    # Declension pattern - some pronouns decline like nouns, others like adjectives
+    declension_pattern: Literal["noun_like", "adjective_like", "special"]
+    
+    # Declensions - structure depends on the pattern
+    # For personal pronouns (noun-like): simple case forms
+    singular: Optional[Dict[Case, str]] = None
+    plural: Optional[Dict[Case, str]] = None
+    
+    # For adjective-like pronouns: gender-specific forms
+    masculine: Optional[Dict[Case, str]] = None
+    feminine: Optional[Dict[Case, str]] = None
+    neuter: Optional[Dict[Case, str]] = None
+    plural_adjective_like: Optional[Dict[Case, str]] = None
+    
+    # Special notes for irregular pronouns
+    notes: Optional[str] = None
+
+    @staticmethod
+    def get_format_instructions() -> str:
+        return (
+            "Your response must be valid JSON that matches this schema:\n"
+            "{\n"
+            "  \"dictionary_form\": \"string (base form of the pronoun)\",\n"
+            "  \"english_translation\": \"string\",\n"
+            "  \"pronoun_type\": \"personal\" | \"possessive\" | \"demonstrative\" | \"interrogative\" | \"relative\" | \"indefinite\" | \"negative\",\n"
+            "  \"person\": \"first\" | \"second\" | \"third\" | null,\n"
+            "  \"number\": \"singular\" | \"plural\" | null,\n"
+            "  \"gender\": \"masculine\" | \"feminine\" | \"neuter\" | null,\n"
+            "  \"declension_pattern\": \"noun_like\" | \"adjective_like\" | \"special\",\n"
+            "  \"singular\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"plural\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"masculine\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"feminine\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"neuter\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"plural_adjective_like\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"notes\": \"string | null (special notes for irregular pronouns)\"\n"
+            "}\n"
+            "Important: Use appropriate declension pattern:\n"
+            "- noun_like: for personal pronouns (я, ты, он, она, оно, мы, вы, они) - use singular/plural fields\n"
+            "- adjective_like: for demonstrative, possessive pronouns (этот, мой, наш) - use masculine/feminine/neuter/plural_adjective_like fields\n"
+            "- special: for irregular pronouns with unique declension patterns"
         )
 

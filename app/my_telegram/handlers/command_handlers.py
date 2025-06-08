@@ -210,7 +210,7 @@ async def dictionary_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         for word_type in WordType:
             count = dict_stats.get(word_type.value, 0)
             if count > 0:
-                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄"}.get(word_type.value, "📝")
+                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄", "pronoun": "👤"}.get(word_type.value, "📝")
                 response += f"• {emoji} {word_type.value.title()}: {count}\n"
         
         response += "\n"
@@ -219,7 +219,7 @@ async def dictionary_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if recent_words:
             response += "🕒 *Recent Words:*\n"
             for word in recent_words[:5]:  # Show only first 5
-                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄"}.get(word.word_type.value, "📝")
+                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄", "pronoun": "👤"}.get(word.word_type.value, "📝")
                 response += f"• {emoji} {word.dictionary_form} ({word.word_type.value}) - {word.flashcards_generated} cards\n"
             
             if len(recent_words) > 5:

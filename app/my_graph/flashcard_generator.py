@@ -3,8 +3,8 @@
 import logging
 from typing import List, Any
 from app.flashcards import flashcard_service
-from app.grammar.russian import Noun, Adjective, Verb
-from app.my_graph.generators import NounGenerator, AdjectiveGenerator, VerbGenerator
+from app.grammar.russian import Noun, Adjective, Verb, Pronoun
+from app.my_graph.generators import NounGenerator, AdjectiveGenerator, VerbGenerator, PronounGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,15 @@ class FlashcardGenerator:
         self.noun_generator = NounGenerator()
         self.adjective_generator = AdjectiveGenerator()
         self.verb_generator = VerbGenerator()
+        self.pronoun_generator = PronounGenerator()
     
     def generate_flashcards_from_grammar(self, grammar_obj: Any, word_type: str) -> List[Any]:
         """
-        Generate flashcards from a grammar object (Noun, Adjective, or Verb).
+        Generate flashcards from a grammar object (Noun, Adjective, Verb, or Pronoun).
         
         Args:
-            grammar_obj: The parsed grammar object (Noun, Adjective, or Verb)
-            word_type: Type of word ("noun", "adjective", "verb")
+            grammar_obj: The parsed grammar object (Noun, Adjective, Verb, or Pronoun)
+            word_type: Type of word ("noun", "adjective", "verb", "pronoun")
             
         Returns:
             List of flashcards
@@ -38,6 +39,8 @@ class FlashcardGenerator:
                 flashcards = self.adjective_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
             elif isinstance(grammar_obj, Verb):
                 flashcards = self.verb_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
+            elif isinstance(grammar_obj, Pronoun):
+                flashcards = self.pronoun_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
             else:
                 logger.warning(f"Unknown grammar object type: {type(grammar_obj)}")
                 

@@ -34,6 +34,8 @@ def map_grammar_to_word_type(grammar_data: dict) -> WordType:
         return WordType.ADJECTIVE
     elif "aspect" in grammar_data and "past_masculine" in grammar_data:
         return WordType.VERB
+    elif "pronoun_type" in grammar_data and "declension_pattern" in grammar_data:
+        return WordType.PRONOUN
     else:
         return WordType.UNKNOWN
 

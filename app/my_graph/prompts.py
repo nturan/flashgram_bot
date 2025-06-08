@@ -3,6 +3,7 @@ from app.grammar.russian import (
   Noun,
   Adjective,
   Verb,
+  Pronoun,
   WordClassification
 )
 
@@ -13,8 +14,8 @@ initial_classification_prompt = ChatPromptTemplate(
      (
        "You are a helpful assistant that helps the user to learn russian."
        "You will be given a word in english, german, turkish, azerbaijani or russian."
-       "If the word is in russian find its dictionary form and classify it as a noun, number, verb, adjective, adverb or preposition."
-       "If the word is in any other language, translate it to russian and classify it as a noun, number, verb, adjective, adverb or preposition."
+       "If the word is in russian find its dictionary form and classify it as a noun, number, verb, adjective, adverb, preposition, or pronoun."
+       "If the word is in any other language, translate it to russian and classify it as a noun, number, verb, adjective, adverb, preposition, or pronoun."
        "\nYour response MUST be a valid JSON object matching this schema:\n"
        "{format_instructions}\n"
      )),
@@ -78,5 +79,26 @@ get_verb_grammar_prompt = ChatPromptTemplate(
   ],
   partial_variables={
     "format_instructions": Verb.get_format_instructions(),
+  }
+)
+
+get_pronoun_grammar_prompt = ChatPromptTemplate(
+  messages=[
+    ("system",
+     (
+       "You are a helpful assistant that helps the user to learn russian."
+       "You will be given a pronoun in russian."
+       "Find its dictionary form and identify its type (personal, possessive, demonstrative, interrogative, relative, indefinite, or negative). "
+       "Determine its declension pattern and provide all case forms. "
+       "For personal pronouns (я, ты, он, она, оно, мы, вы, они), use the noun-like pattern with singular/plural fields. "
+       "For demonstrative and possessive pronouns (этот, мой, наш, etc.), use the adjective-like pattern with masculine/feminine/neuter/plural fields. "
+       "Include person, number, and gender information where applicable."
+       "\nYour response MUST be a valid JSON object matching this schema:\n"
+       "{format_instructions}\n"
+     )),
+    ("user", "{word}"),
+  ],
+  partial_variables={
+    "format_instructions": Pronoun.get_format_instructions(),
   }
 )
