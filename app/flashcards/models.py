@@ -135,3 +135,41 @@ def create_flashcard_from_dict(data: dict) -> FlashcardUnion:
         return MultipleChoice(**data)
     else:
         raise ValueError(f"Unknown flashcard type: {flashcard_type}")
+
+
+class WordType(str, Enum):
+    """Enum for different word types that can be processed."""
+    NOUN = "noun"
+    ADJECTIVE = "adjective"
+    VERB = "verb"
+    ADVERB = "adverb"
+    PRONOUN = "pronoun"
+    PREPOSITION = "preposition"
+    CONJUNCTION = "conjunction"
+    PARTICLE = "particle"
+    UNKNOWN = "unknown"
+
+
+class DictionaryWord(BaseModel):
+    """Model for tracking processed dictionary words to avoid regeneration."""
+    
+    # Identification
+    id: Optional[str] = Field(None, description="Unique identifier (MongoDB ObjectId)")
+    
+    # Word data
+    dictionary_form: str = Field(..., description="The dictionary form of the word")
+    word_type: WordType = Field(..., description="Type of word (noun, verb, adjective, etc.)")
+    
+    # Processing metadata
+    processed_date: datetime = Field(default_factory=datetime.now, description="When this word was processed")
+    flashcards_generated: int = Field(default=0, description="Number of flashcards generated for this word")
+    
+    # Analysis metadata (optional - can store grammar analysis results)
+    grammar_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Cached grammar analysis data")
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now, description="When the record was created")
+    updated_at: datetime = Field(default_factory=datetime.now, description="When the record was last updated")
+    
+    class Config:
+        use_enum_values = True

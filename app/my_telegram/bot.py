@@ -8,7 +8,7 @@ from telegram.ext import (
 
 from app.my_graph.language_tutor import RussianTutor
 from app.my_telegram.handlers import (
-    start, help_command, dashboard_command, dbstatus_command,
+    start, help_command, dashboard_command, dbstatus_command, dictionary_command,
     learn_command, finish_command, handle_message
 )
 from app.my_telegram.handlers.message_handlers import set_russian_tutor
@@ -739,6 +739,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     application.add_handler(CommandHandler("learn", learn_command))
     application.add_handler(CommandHandler("finish", finish_command))
     application.add_handler(CommandHandler("dbstatus", dbstatus_command))
+    application.add_handler(CommandHandler("dictionary", dictionary_command))
     
     # Add callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))

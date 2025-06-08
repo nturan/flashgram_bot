@@ -10,6 +10,8 @@ from app.my_graph.language_tutor import RussianTutor
 from app.common.text_processing import extract_russian_words
 from app.common.telegram_utils import safe_send_markdown
 from .learning_handlers import process_answer
+from app.flashcards.models import WordType
+from app.flashcards import flashcard_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,71 @@ def set_russian_tutor(tutor: RussianTutor):
     """Set the Russian tutor instance for message processing."""
     global russian_tutor
     russian_tutor = tutor
+
+
+def map_grammar_to_word_type(grammar_data: dict) -> WordType:
+    """Map grammar analysis data to WordType enum."""
+    # Determine word type from grammar analysis
+    if "gender" in grammar_data and "animacy" in grammar_data:
+        return WordType.NOUN
+    elif "masculine" in grammar_data and "feminine" in grammar_data:
+        return WordType.ADJECTIVE
+    elif "aspect" in grammar_data and "past_masculine" in grammar_data:
+        return WordType.VERB
+    else:
+        return WordType.UNKNOWN
+
+
+def get_word_type_display_name(word_type: WordType) -> str:
+    """Get human-readable display name for word type."""
+    return word_type.value
+
+
+async def check_and_process_word(word: str) -> tuple[bool, dict]:
+    """
+    Check if word is already processed and return result.
+    Returns (was_processed, result_info)
+    """
+    try:
+        # First, analyze the word to get its dictionary form and type
+        result = russian_tutor.invoke(word, generate_flashcards=False)  # Don't generate flashcards yet
+        
+        if "final_answer" not in result or not result["final_answer"]:
+            return False, {"error": "No analysis result"}
+        
+        try:
+            grammar_data = json.loads(result["final_answer"])
+            dictionary_form = grammar_data.get("dictionary_form", word)
+            word_type = map_grammar_to_word_type(grammar_data)
+            
+            # Check if this word+type combination is already processed
+            if flashcard_service.db.is_word_processed(dictionary_form, word_type):
+                # Get the cached word info
+                processed_word = flashcard_service.db.get_processed_word(dictionary_form, word_type)
+                return True, {
+                    "word": word,
+                    "dictionary_form": dictionary_form,
+                    "type": get_word_type_display_name(word_type),
+                    "flashcards": processed_word.flashcards_generated if processed_word else 0,
+                    "processed_date": processed_word.processed_date if processed_word else None,
+                    "cached": True
+                }
+            
+            # Word not processed yet, return analysis data for processing
+            return False, {
+                "word": word,
+                "dictionary_form": dictionary_form,
+                "word_type": word_type,
+                "grammar_data": grammar_data,
+                "analysis_result": result
+            }
+            
+        except json.JSONDecodeError:
+            return False, {"error": "JSON decode error"}
+            
+    except Exception as e:
+        logger.error(f"Error checking word '{word}': {e}")
+        return False, {"error": str(e)}
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -222,82 +289,142 @@ async def process_russian_text(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
         
+        # Send initial processing message
+        word_count = len(words)
+        word_plural = "words" if word_count != 1 else "word"
+        unique_words = list(set(words))  # Remove duplicates for more accurate count
+        unique_count = len(unique_words)
+        
+        if unique_count != word_count:
+            processing_text = f"🔄 Processing {unique_count} unique {word_plural} from your text..."
+        else:
+            processing_text = f"🔄 Processing {word_count} {word_plural}..."
+        
+        # Send the initial message and keep reference to edit it later
+        processing_message = await update.message.reply_text(processing_text)
+        
         # Track results for each word
         successful_words = []
+        cached_words = []
         failed_words = []
         total_flashcards = 0
         
-        # Process each word
-        for word in words:
+        # Process each unique word
+        for i, word in enumerate(unique_words, 1):
             try:
-                # Analyze the word with flashcard generation
-                result = russian_tutor.invoke(word, generate_flashcards=True)
+                # Check if word is already processed
+                was_processed, word_info = await check_and_process_word(word)
                 
-                if "final_answer" in result and result["final_answer"]:
-                    # Parse grammar data
+                if "error" in word_info:
+                    failed_words.append(word)
+                    continue
+                
+                if was_processed:
+                    # Word was already processed, use cached data
+                    cached_words.append(word_info)
+                    total_flashcards += word_info["flashcards"]
+                    logger.info(f"Using cached data for word '{word}' -> '{word_info['dictionary_form']}'")
+                else:
+                    # Word not processed yet, generate flashcards
                     try:
-                        grammar_data = json.loads(result["final_answer"])
-                        word_type = "unknown"
+                        # Generate flashcards using the pre-analyzed data
+                        result = russian_tutor.invoke(word, generate_flashcards=True)
                         
-                        # Determine word type
-                        if "gender" in grammar_data and "animacy" in grammar_data:
-                            word_type = "noun"
-                        elif "masculine" in grammar_data and "feminine" in grammar_data:
-                            word_type = "adjective"
-                        elif "aspect" in grammar_data and "past_masculine" in grammar_data:
-                            word_type = "verb"
-                        
-                        flashcard_count = result.get("flashcards_generated", 0)
-                        successful_words.append({
-                            "word": word,
-                            "type": word_type,
-                            "dictionary_form": grammar_data.get("dictionary_form", word),
-                            "flashcards": flashcard_count
-                        })
-                        total_flashcards += flashcard_count
-                        
-                    except json.JSONDecodeError:
+                        if "final_answer" in result and result["final_answer"]:
+                            flashcard_count = result.get("flashcards_generated", 0)
+                            
+                            # Add to processed words cache
+                            flashcard_service.db.add_processed_word(
+                                word_info["dictionary_form"],
+                                word_info["word_type"],
+                                flashcard_count,
+                                word_info["grammar_data"]
+                            )
+                            
+                            successful_words.append({
+                                "word": word,
+                                "type": get_word_type_display_name(word_info["word_type"]),
+                                "dictionary_form": word_info["dictionary_form"],
+                                "flashcards": flashcard_count
+                            })
+                            total_flashcards += flashcard_count
+                            
+                        else:
+                            failed_words.append(word)
+                    
+                    except Exception as e:
+                        logger.error(f"Error generating flashcards for word '{word}': {e}")
                         failed_words.append(word)
                         
-                else:
-                    failed_words.append(word)
-                    
             except Exception as e:
                 logger.error(f"Error processing word '{word}': {e}")
                 failed_words.append(word)
+            
+            # Update progress for large texts (every 5 words or if it's the last word)
+            if unique_count > 10 and (i % 5 == 0 or i == unique_count):
+                try:
+                    progress_text = f"🔄 Processing {word_plural}... ({i}/{unique_count})"
+                    await processing_message.edit_text(progress_text)
+                except Exception:
+                    # Don't break processing if we can't edit the message
+                    pass
         
         # Build summary response
-        if successful_words or failed_words:
+        if successful_words or cached_words or failed_words:
             response = "📚 *Text Analysis Complete!*\n\n"
             
             if successful_words:
                 word_plural = "words" if len(successful_words) != 1 else "word"
-                response += f"✅ *Successfully processed {len(successful_words)} {word_plural}:*\n"
+                response += f"✅ *Newly processed {len(successful_words)} {word_plural}:*\n"
                 for word_info in successful_words:
                     response += f"• {word_info['dictionary_form']} ({word_info['type']}) - {word_info['flashcards']} flashcards\n"
-                
-                response += f"\n🎯 *Total flashcards generated:* {total_flashcards}\n"
-                response += f"💾 All flashcards saved to database for spaced repetition!\n"
+                response += "\n"
+            
+            if cached_words:
+                word_plural = "words" if len(cached_words) != 1 else "word"
+                response += f"💾 *Already processed {len(cached_words)} {word_plural} (using cache):*\n"
+                for word_info in cached_words:
+                    response += f"• {word_info['dictionary_form']} ({word_info['type']}) - {word_info['flashcards']} flashcards\n"
+                response += "\n"
             
             if failed_words:
                 word_plural = "words" if len(failed_words) != 1 else "word"
-                response += f"\n⚠️ *Skipped {len(failed_words)} {word_plural}:*\n"
+                response += f"⚠️ *Skipped {len(failed_words)} {word_plural}:*\n"
                 response += f"• {', '.join(failed_words)}\n"
-                response += f"*(Unsupported word types or analysis errors)*\n"
+                response += f"*(Unsupported word types or analysis errors)*\n\n"
             
-            response += f"\n💡 Use /learn to practice with your flashcards!"
+            # Show totals
+            total_processed = len(successful_words) + len(cached_words)
+            if total_processed > 0:
+                response += f"🎯 *Total flashcards available:* {total_flashcards}\n"
+                response += f"📖 *Words in dictionary:* {total_processed}\n"
+                response += f"💡 Use /learn to practice with your flashcards!"
             
-            # Send response
-            await safe_send_markdown(update, response)
+            # Edit the processing message with final results
+            try:
+                await processing_message.edit_text(response, parse_mode='Markdown')
+            except Exception as edit_error:
+                logger.warning(f"Failed to edit processing message: {edit_error}")
+                # Fallback: send as new message
+                await safe_send_markdown(update, response)
                 
         else:
-            await update.message.reply_text(
-                "❌ I couldn't analyze any words from your text. "
-                "Please try again with clear Russian words."
-            )
+            # Edit processing message to show error
+            error_text = "❌ I couldn't analyze any words from your text. Please try again with clear Russian words."
+            try:
+                await processing_message.edit_text(error_text)
+            except Exception:
+                await update.message.reply_text(error_text)
     
     except Exception as e:
         logger.error(f"Error processing text: {str(e)}")
-        await update.message.reply_text(
-            "❌ Sorry, I encountered an error processing your text. Please try again."
-        )
+        error_text = "❌ Sorry, I encountered an error processing your text. Please try again."
+        
+        # Try to edit the processing message if it exists, otherwise send new message
+        try:
+            if 'processing_message' in locals():
+                await processing_message.edit_text(error_text)
+            else:
+                await update.message.reply_text(error_text)
+        except Exception:
+            await update.message.reply_text(error_text)

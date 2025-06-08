@@ -12,7 +12,9 @@ from app.flashcards.models import (
     TwoSidedCard, 
     FillInTheBlank, 
     MultipleChoice,
-    create_flashcard_from_dict
+    create_flashcard_from_dict,
+    DictionaryWord,
+    WordType
 )
 
 logger = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ class FlashcardDatabaseV2:
             # Get database and collection
             self.db = self.client[settings.mongodb_database]
             self.collection = self.db.dev  # New collection for v2 flashcards
+            self.dictionary_words_collection = self.db.dictionary_words  # Collection for processed words
             
             logger.info(f"Successfully connected to MongoDB: {settings.mongodb_cluster_url}")
             
@@ -345,6 +348,197 @@ class FlashcardDatabaseV2:
         if self.client:
             self.client.close()
             logger.info("MongoDB connection closed")
+    
+    # Dictionary Word Operations
+    
+    def is_word_processed(self, dictionary_form: str, word_type: WordType) -> bool:
+        """Check if a word with the given dictionary form and type has already been processed."""
+        try:
+            result = self.dictionary_words_collection.find_one({
+                "dictionary_form": dictionary_form.lower().strip(),
+                "word_type": word_type.value
+            })
+            
+            is_processed = result is not None
+            if is_processed:
+                logger.info(f"Word '{dictionary_form}' ({word_type.value}) already processed")
+            
+            return is_processed
+            
+        except Exception as e:
+            logger.error(f"Error checking if word is processed: {e}")
+            return False
+    
+    def add_processed_word(self, dictionary_form: str, word_type: WordType, 
+                          flashcards_generated: int = 0, grammar_data: Optional[Dict] = None) -> Optional[str]:
+        """Add a new processed word to the dictionary."""
+        try:
+            dictionary_word = DictionaryWord(
+                dictionary_form=dictionary_form.lower().strip(),
+                word_type=word_type,
+                flashcards_generated=flashcards_generated,
+                grammar_data=grammar_data or {}
+            )
+            
+            # Convert to dict and insert
+            word_dict = dictionary_word.model_dump()
+            if word_dict.get('id') is None:
+                word_dict.pop('id', None)
+            
+            result = self.dictionary_words_collection.insert_one(word_dict)
+            
+            if result.inserted_id:
+                logger.info(f"Added processed word: '{dictionary_form}' ({word_type.value}) with {flashcards_generated} flashcards")
+                return str(result.inserted_id)
+            else:
+                logger.error("Failed to add processed word")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error adding processed word: {e}")
+            return None
+    
+    def get_processed_word(self, dictionary_form: str, word_type: WordType) -> Optional[DictionaryWord]:
+        """Get a processed word by dictionary form and type."""
+        try:
+            doc = self.dictionary_words_collection.find_one({
+                "dictionary_form": dictionary_form.lower().strip(),
+                "word_type": word_type.value
+            })
+            
+            if doc:
+                doc["id"] = str(doc["_id"])
+                del doc["_id"]
+                return DictionaryWord(**doc)
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error retrieving processed word: {e}")
+            return None
+    
+    def update_processed_word_stats(self, dictionary_form: str, word_type: WordType, 
+                                   additional_flashcards: int = 0) -> bool:
+        """Update statistics for a processed word."""
+        try:
+            result = self.dictionary_words_collection.update_one(
+                {
+                    "dictionary_form": dictionary_form.lower().strip(),
+                    "word_type": word_type.value
+                },
+                {
+                    "$inc": {"flashcards_generated": additional_flashcards},
+                    "$set": {"updated_at": datetime.now()}
+                }
+            )
+            
+            return result.modified_count > 0
+            
+        except Exception as e:
+            logger.error(f"Error updating processed word stats: {e}")
+            return False
+    
+    def get_processed_words_count(self) -> int:
+        """Get the total number of processed words."""
+        try:
+            count = self.dictionary_words_collection.count_documents({})
+            logger.info(f"Total processed words: {count}")
+            return count
+            
+        except Exception as e:
+            logger.error(f"Error counting processed words: {e}")
+            return 0
+    
+    def get_processed_words_by_type(self, word_type: Optional[WordType] = None, 
+                                   limit: Optional[int] = None) -> List[DictionaryWord]:
+        """Get processed words, optionally filtered by type."""
+        try:
+            query_filter = {}
+            if word_type:
+                query_filter["word_type"] = word_type.value
+            
+            cursor = self.dictionary_words_collection.find(query_filter).sort("processed_date", -1)
+            
+            if limit:
+                cursor = cursor.limit(limit)
+            
+            words = []
+            for doc in cursor:
+                try:
+                    doc["id"] = str(doc["_id"])
+                    del doc["_id"]
+                    words.append(DictionaryWord(**doc))
+                except Exception as e:
+                    logger.warning(f"Failed to parse processed word document: {e}")
+                    continue
+            
+            logger.info(f"Retrieved {len(words)} processed words")
+            return words
+            
+        except Exception as e:
+            logger.error(f"Error retrieving processed words: {e}")
+            return []
+    
+    def delete_processed_word(self, dictionary_form: str, word_type: WordType) -> bool:
+        """Delete a processed word (useful for reprocessing)."""
+        try:
+            result = self.dictionary_words_collection.delete_one({
+                "dictionary_form": dictionary_form.lower().strip(),
+                "word_type": word_type.value
+            })
+            
+            if result.deleted_count > 0:
+                logger.info(f"Deleted processed word: '{dictionary_form}' ({word_type.value})")
+                return True
+            else:
+                logger.warning(f"No processed word deleted for: '{dictionary_form}' ({word_type.value})")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting processed word: {e}")
+            return False
+    
+    def get_dictionary_stats(self) -> Dict[str, int]:
+        """Get statistics about processed dictionary words."""
+        try:
+            # Total processed words
+            total = self.get_processed_words_count()
+            
+            # Words by type
+            type_stats = {}
+            for word_type in WordType:
+                count = self.dictionary_words_collection.count_documents({
+                    "word_type": word_type.value
+                })
+                type_stats[word_type.value] = count
+            
+            # Recent words (last 7 days)
+            recent_cutoff = datetime.now() - timedelta(days=7)
+            recent_count = self.dictionary_words_collection.count_documents({
+                "processed_date": {"$gte": recent_cutoff}
+            })
+            
+            # Total flashcards generated from all words
+            pipeline = [
+                {"$group": {"_id": None, "total_flashcards": {"$sum": "$flashcards_generated"}}}
+            ]
+            result = list(self.dictionary_words_collection.aggregate(pipeline))
+            total_flashcards = result[0]["total_flashcards"] if result else 0
+            
+            return {
+                "total_words": total,
+                "recent_words": recent_count,
+                "total_flashcards_from_words": total_flashcards,
+                **type_stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting dictionary stats: {e}")
+            return {
+                "total_words": 0,
+                "recent_words": 0,
+                "total_flashcards_from_words": 0
+            }
 
 # Global database instance
 flashcard_db_v2 = FlashcardDatabaseV2()

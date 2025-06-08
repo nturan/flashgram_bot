@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 from app.flashcards import flashcard_service
 from app.common.telegram_utils import safe_send_markdown
+from app.flashcards.models import WordType
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "• /dashboard - View flashcard statistics and progress\n"
         "• /learn - Start flashcard learning mode\n"
         "• /finish - Exit learning mode\n"
-        "• /dbstatus - Check database connection status\n\n"
+        "• /dbstatus - Check database connection status\n"
+        "• /dictionary - View processed words and dictionary stats\n\n"
         "Examples to try:\n"
         "- 'книга' (book) or 'стол' (table) for nouns\n"
         "- 'красивый' (beautiful) or 'хороший' (good) for adjectives\n"
@@ -180,4 +182,67 @@ async def dbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             f"🔴 *Database Status: Disconnected*\n\n"
             f"❌ Error: {str(e)}\n\n"
             f"Please contact the administrator."
+        )
+
+
+async def dictionary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show dictionary statistics and recent processed words."""
+    await update.message.chat.send_action(action="typing")
+    
+    try:
+        # Get dictionary statistics
+        dict_stats = flashcard_service.db.get_dictionary_stats()
+        
+        # Get recent processed words (last 10)
+        recent_words = flashcard_service.db.get_processed_words_by_type(limit=10)
+        
+        # Build response
+        response = "📖 *Dictionary Statistics*\n\n"
+        
+        # Overview section
+        response += "📊 *Overview:*\n"
+        response += f"• Total processed words: {dict_stats.get('total_words', 0)}\n"
+        response += f"• Recent words (7 days): {dict_stats.get('recent_words', 0)}\n"
+        response += f"• Total flashcards generated: {dict_stats.get('total_flashcards_from_words', 0)}\n\n"
+        
+        # Word types breakdown
+        response += "🔤 *By Word Type:*\n"
+        for word_type in WordType:
+            count = dict_stats.get(word_type.value, 0)
+            if count > 0:
+                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄"}.get(word_type.value, "📝")
+                response += f"• {emoji} {word_type.value.title()}: {count}\n"
+        
+        response += "\n"
+        
+        # Recent words section
+        if recent_words:
+            response += "🕒 *Recent Words:*\n"
+            for word in recent_words[:5]:  # Show only first 5
+                emoji = {"noun": "📚", "adjective": "🎨", "verb": "⚡", "adverb": "🔄"}.get(word.word_type.value, "📝")
+                response += f"• {emoji} {word.dictionary_form} ({word.word_type.value}) - {word.flashcards_generated} cards\n"
+            
+            if len(recent_words) > 5:
+                response += f"• ... and {len(recent_words) - 5} more\n"
+            response += "\n"
+        
+        # Efficiency stats
+        total_words = dict_stats.get('total_words', 0)
+        total_flashcards = dict_stats.get('total_flashcards_from_words', 0)
+        if total_words > 0:
+            avg_flashcards = total_flashcards / total_words
+            response += f"📈 *Efficiency:*\n"
+            response += f"• Average flashcards per word: {avg_flashcards:.1f}\n"
+            response += f"• Cache hit rate helps avoid regeneration 🚀\n\n"
+        
+        # Instructions
+        response += "💡 *Note:* Words are automatically cached to avoid regenerating flashcards for the same dictionary form + word type combination."
+        
+        # Send response
+        await safe_send_markdown(update, response)
+    
+    except Exception as e:
+        logger.error(f"Error in dictionary command: {e}")
+        await update.message.reply_text(
+            "❌ Error retrieving dictionary data. Please try again later."
         )
