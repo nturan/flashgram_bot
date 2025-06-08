@@ -321,3 +321,120 @@ class Pronoun(BaseModel):
             "- special: for irregular pronouns with unique declension patterns"
         )
 
+
+class Number(BaseModel):
+    dictionary_form: str
+    english_translation: str
+    numeric_value: int  # The actual number (1, 2, 3, etc.)
+    number_type: Literal["cardinal", "ordinal", "collective"]
+    
+    # Number category affects declension pattern
+    number_category: Literal[
+        "one",           # один/одна/одно (declines like adjective)
+        "two_three_four", # два/три/четыре (special pattern)
+        "five_twenty",   # пять-двадцать (like feminine nouns ending in ь)
+        "tens",          # тридцать, сорок, etc. (special patterns)
+        "hundreds",      # сто, двести, триста, etc. (special patterns)
+        "thousands",     # тысяча (like feminine noun)
+        "compound",      # compound numbers (двадцать один, etc.)
+        "special"        # irregular numbers
+    ]
+    
+    # Gender (for числительные that have gender like один/одна/одно)
+    gender: Optional[Gender] = None
+    
+    # Declension patterns vary by category
+    # For "one" type - adjective-like declension with gender
+    masculine: Optional[Dict[Case, str]] = None
+    feminine: Optional[Dict[Case, str]] = None
+    neuter: Optional[Dict[Case, str]] = None
+    
+    # For most other numbers - simpler case forms
+    singular: Optional[Dict[Case, str]] = None
+    plural: Optional[Dict[Case, str]] = None
+    
+    # Special case forms for compound numbers
+    compound_forms: Optional[Dict[str, str]] = None
+    
+    # Usage notes for complex numbers
+    usage_notes: Optional[str] = None
+    
+    # Agreement patterns (what case the counted noun takes)
+    noun_agreement: Optional[Dict[Case, str]] = None
+
+    @staticmethod
+    def get_format_instructions() -> str:
+        return (
+            "Your response must be valid JSON that matches this schema:\n"
+            "{\n"
+            "  \"dictionary_form\": \"string (base form of the number)\",\n"
+            "  \"english_translation\": \"string\",\n"
+            "  \"numeric_value\": number (1, 2, 3, etc.),\n"
+            "  \"number_type\": \"cardinal\" | \"ordinal\" | \"collective\",\n"
+            "  \"number_category\": \"one\" | \"two_three_four\" | \"five_twenty\" | \"tens\" | \"hundreds\" | \"thousands\" | \"compound\" | \"special\",\n"
+            "  \"gender\": \"masculine\" | \"feminine\" | \"neuter\" | null,\n"
+            "  \"masculine\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"feminine\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"neuter\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"singular\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"plural\": {\n"
+            "    \"nom\": \"string\",\n"
+            "    \"gen\": \"string\",\n"
+            "    \"dat\": \"string\",\n"
+            "    \"acc\": \"string\",\n"
+            "    \"ins\": \"string\",\n"
+            "    \"pre\": \"string\"\n"
+            "  } | null,\n"
+            "  \"compound_forms\": object | null,\n"
+            "  \"usage_notes\": \"string | null\",\n"
+            "  \"noun_agreement\": {\n"
+            "    \"nom\": \"string (what case nouns take when number is nominative)\",\n"
+            "    \"gen\": \"string (what case nouns take when number is genitive)\",\n"
+            "    \"dat\": \"string (what case nouns take when number is dative)\",\n"
+            "    \"acc\": \"string (what case nouns take when number is accusative)\",\n"
+            "    \"ins\": \"string (what case nouns take when number is instrumental)\",\n"
+            "    \"pre\": \"string (what case nouns take when number is prepositional)\"\n"
+            "  } | null\n"
+            "}\n"
+            "Important: Choose the correct category and use appropriate fields:\n"
+            "- 'one': один/одна/одно - use masculine/feminine/neuter fields (adjective-like)\n"
+            "- 'two_three_four': два, три, четыре - use singular field\n"
+            "- 'five_twenty': пять-двадцать - use singular field\n"
+            "- 'tens': тридцать, сорок, пятьдесят-девяносто - use singular field\n"
+            "- 'hundreds': сто, двести, триста-девятьсот - use singular field\n"
+            "- 'thousands': тысяча, миллион, etc. - use singular/plural fields\n"
+            "- 'compound': complex numbers like двадцать один - use compound_forms\n"
+            "Include noun_agreement patterns using short case names (nom/gen/dat/acc/ins/pre):\n"
+            "- For 2-4: usually genitive singular for counted nouns\n"
+            "- For 5+: usually genitive plural for counted nouns\n"
+            "Example: {\"nom\": \"genitive_singular\", \"gen\": \"genitive_singular\", ...}\""
+        )
+

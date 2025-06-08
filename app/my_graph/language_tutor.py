@@ -14,6 +14,7 @@ from app.my_graph.prompts import (
   get_adjective_grammar_prompt,
   get_verb_grammar_prompt,
   get_pronoun_grammar_prompt,
+  get_number_grammar_prompt,
 )
 from app.grammar.russian import (
   WordClassification,
@@ -21,6 +22,7 @@ from app.grammar.russian import (
   Adjective,
   Verb,
   Pronoun,
+  Number,
 )
 from app.my_graph.flashcard_generator import flashcard_generator
 
@@ -31,6 +33,7 @@ class State(TypedDict):
     adjective_grammar: Optional[Adjective]
     verb_grammar: Optional[Verb]
     pronoun_grammar: Optional[Pronoun]
+    number_grammar: Optional[Number]
     final_answer: Optional[str]
     generate_flashcards: Optional[bool]
     flashcards_generated: Optional[int]
@@ -69,6 +72,12 @@ class RussianTutor:
             get_pronoun_grammar_prompt
             | self.llm
             | PydanticOutputParser(pydantic_object=Pronoun)
+        )
+
+        self.get_number_grammar_chain: RunnableSerializable[dict[Any, Any], Number] = (
+            get_number_grammar_prompt
+            | self.llm
+            | PydanticOutputParser(pydantic_object=Number)
         )
 
         self.graph = self._build_graph()
@@ -166,6 +175,25 @@ class RussianTutor:
             "final_answer": result.model_dump_json(indent=2)
         }
 
+    def get_number_grammar(
+            self, state: State, writer: Optional[StreamWriter] = None, config: Optional[RunnableConfig] = None,
+    ) -> State:
+        """Get grammar details for a Russian number"""
+        if writer and hasattr(writer, 'write'):
+            writer.write("Getting number grammar details...\n")
+
+        word = state.get("classification").russian_word if state.get("classification") else state["original_human_input"]
+
+        result: Number = self.get_number_grammar_chain.invoke(
+            {"word": word}, config=config
+        )
+
+        return {
+            **state,
+            "number_grammar": result,
+            "final_answer": result.model_dump_json(indent=2)
+        }
+
     def generate_flashcards(
             self, state: State, writer: Optional[StreamWriter] = None, config: Optional[RunnableConfig] = None,
     ) -> State:
@@ -191,6 +219,9 @@ class RussianTutor:
             elif state.get("pronoun_grammar"):
                 grammar_obj = state["pronoun_grammar"]
                 word_type = "pronoun"
+            elif state.get("number_grammar"):
+                grammar_obj = state["number_grammar"]
+                word_type = "number"
             
             if grammar_obj and word_type:
                 # Generate flashcards
@@ -235,6 +266,7 @@ class RussianTutor:
         workflow.add_node("get_adjective_grammar", self.get_adjective_grammar)
         workflow.add_node("get_verb_grammar", self.get_verb_grammar)
         workflow.add_node("get_pronoun_grammar", self.get_pronoun_grammar)
+        workflow.add_node("get_number_grammar", self.get_number_grammar)
         workflow.add_node("flashcard_generation", self.generate_flashcards)
 
         # Define the edges
@@ -249,6 +281,7 @@ class RussianTutor:
                 "adjective": "get_adjective_grammar",
                 "verb": "get_verb_grammar",
                 "pronoun": "get_pronoun_grammar",
+                "number": "get_number_grammar",
                 # Add more word types and handlers here as you implement them
                 # Default to end for any word type without a specific handler
                 "__default__": END
@@ -264,6 +297,7 @@ class RussianTutor:
         workflow.add_conditional_edges("get_adjective_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_verb_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_pronoun_grammar", should_generate_flashcards)
+        workflow.add_conditional_edges("get_number_grammar", should_generate_flashcards)
         
         # Connect flashcard generation to END
         workflow.add_edge("flashcard_generation", END)

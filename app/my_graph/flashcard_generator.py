@@ -3,8 +3,8 @@
 import logging
 from typing import List, Any
 from app.flashcards import flashcard_service
-from app.grammar.russian import Noun, Adjective, Verb, Pronoun
-from app.my_graph.generators import NounGenerator, AdjectiveGenerator, VerbGenerator, PronounGenerator
+from app.grammar.russian import Noun, Adjective, Verb, Pronoun, Number
+from app.my_graph.generators import NounGenerator, AdjectiveGenerator, VerbGenerator, PronounGenerator, NumberGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,15 @@ class FlashcardGenerator:
         self.adjective_generator = AdjectiveGenerator()
         self.verb_generator = VerbGenerator()
         self.pronoun_generator = PronounGenerator()
+        self.number_generator = NumberGenerator()
     
     def generate_flashcards_from_grammar(self, grammar_obj: Any, word_type: str) -> List[Any]:
         """
-        Generate flashcards from a grammar object (Noun, Adjective, Verb, or Pronoun).
+        Generate flashcards from a grammar object (Noun, Adjective, Verb, Pronoun, or Number).
         
         Args:
-            grammar_obj: The parsed grammar object (Noun, Adjective, Verb, or Pronoun)
-            word_type: Type of word ("noun", "adjective", "verb", "pronoun")
+            grammar_obj: The parsed grammar object (Noun, Adjective, Verb, Pronoun, or Number)
+            word_type: Type of word ("noun", "adjective", "verb", "pronoun", "number")
             
         Returns:
             List of flashcards
@@ -41,6 +42,8 @@ class FlashcardGenerator:
                 flashcards = self.verb_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
             elif isinstance(grammar_obj, Pronoun):
                 flashcards = self.pronoun_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
+            elif isinstance(grammar_obj, Number):
+                flashcards = self.number_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
             else:
                 logger.warning(f"Unknown grammar object type: {type(grammar_obj)}")
                 
