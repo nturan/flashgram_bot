@@ -42,6 +42,8 @@ class State(TypedDict):
 
 class RussianTutor:
     def __init__(self, api_key: SecretStr, model: str = "gpt-4o"):
+        self.api_key = api_key
+        self.default_model = model
         self.llm = ChatOpenAI(api_key=api_key, model=model)
 
         self.initial_classification_chain = (

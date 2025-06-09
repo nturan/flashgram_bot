@@ -9,13 +9,35 @@ from .text_processor import TextProcessor
 
 logger = logging.getLogger(__name__)
 
+# Global LLM instance that can be reinitialized
+_global_llm = None
+
+
+def get_sentence_generator_llm():
+    """Get the global LLM instance for sentence generation."""
+    global _global_llm
+    if _global_llm is None:
+        _global_llm = ChatOpenAI(api_key=SecretStr(settings.openai_api_key), model=settings.llm_model)
+    return _global_llm
+
+
+def reinit_sentence_generator_llm(model: str):
+    """Reinitialize the global LLM with a new model."""
+    global _global_llm
+    logger.info(f"Reinitializing sentence generator LLM with model: {model}")
+    _global_llm = ChatOpenAI(api_key=SecretStr(settings.openai_api_key), model=model)
+
 
 class LLMSentenceGenerator:
     """Generates example sentences using LLM for specific grammatical forms."""
     
     def __init__(self):
-        self.llm = ChatOpenAI(api_key=SecretStr(settings.openai_api_key), model=settings.llm_model)
         self.text_processor = TextProcessor()
+    
+    @property
+    def llm(self):
+        """Get the current LLM instance."""
+        return get_sentence_generator_llm()
     
     def generate_example_sentence(self, word: str, form: str, case_or_form_description: str, word_type: str) -> str:
         """Generate an example sentence using the LLM for a specific grammatical form."""

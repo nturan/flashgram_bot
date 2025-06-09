@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 from app.flashcards import flashcard_service
 from app.common.telegram_utils import safe_send_markdown
 from app.flashcards.models import WordType
+from app.my_telegram.session.config_manager import config_manager
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "• /learn - Start flashcard learning mode\n"
         "• /finish - Exit learning mode\n"
         "• /dbstatus - Check database connection status\n"
-        "• /dictionary - View processed words and dictionary stats\n\n"
+        "• /dictionary - View processed words and dictionary stats\n"
+        "• /configure - View and change bot settings\n\n"
         "Examples to try:\n"
         "- 'книга' (book) or 'стол' (table) for nouns\n"
         "- 'красивый' (beautiful) or 'хороший' (good) for adjectives\n"
@@ -246,3 +248,102 @@ async def dictionary_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(
             "❌ Error retrieving dictionary data. Please try again later."
         )
+
+
+async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /configure command to manage user settings."""
+    user_id = update.effective_user.id
+    
+    # Parse command arguments
+    args = context.args
+    
+    if not args:
+        # Show all current settings
+        try:
+            settings = config_manager.get_all_settings(user_id)
+            available_settings = config_manager.get_available_settings()
+            
+            response = "⚙️ *Configuration Settings*\n\n"
+            response += "📋 *Current Settings:*\n"
+            
+            for setting_name, value in settings.items():
+                response += f"• `{setting_name}`: {value}\n"
+            
+            response += "\n🔧 *Available Settings:*\n"
+            for setting_name, description in available_settings.items():
+                response += f"• `{setting_name}`: {description}\n"
+            
+            response += "\n💡 *Usage:*\n"
+            response += "• `/configure` - Show all settings\n"
+            response += "• `/configure <setting> <value>` - Update a setting\n\n"
+            response += "*Examples:*\n"
+            response += "• `/configure model gpt-4o`\n"
+            response += "• `/configure confirm_flashcards true`"
+            
+            await safe_send_markdown(update, response)
+            
+        except Exception as e:
+            logger.error(f"Error showing configuration: {e}")
+            await update.message.reply_text(
+                "❌ Error retrieving configuration. Please try again later."
+            )
+    
+    elif len(args) == 2:
+        # Update a setting
+        setting_name = args[0].lower()
+        value_str = args[1]
+        
+        try:
+            # Handle boolean values
+            if setting_name == "confirm_flashcards":
+                value = value_str.lower() in ["true", "yes", "1", "on"]
+            else:
+                value = value_str
+            
+            success = config_manager.update_setting(user_id, setting_name, value)
+            
+            if success:
+                # If model was updated, reinitialize both the tutor and sentence generator
+                if setting_name == "model":
+                    from .message_handlers import reinit_tutor_with_model
+                    from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
+                    reinit_tutor_with_model(value)
+                    reinit_sentence_generator_llm(value)
+                response = f"✅ *Setting Updated*\n\n"
+                response += f"📝 `{setting_name}` has been set to: `{value}`"
+                await safe_send_markdown(update, response)
+            else:
+                available_settings = config_manager.get_available_settings()
+                if setting_name not in available_settings:
+                    response = f"❌ *Unknown Setting*\n\n"
+                    response += f"Setting `{setting_name}` does not exist.\n\n"
+                    response += "🔧 *Available Settings:*\n"
+                    for name, description in available_settings.items():
+                        response += f"• `{name}`: {description}\n"
+                    await safe_send_markdown(update, response)
+                else:
+                    response = f"❌ *Invalid Value*\n\n"
+                    response += f"Could not set `{setting_name}` to `{value_str}`.\n\n"
+                    if setting_name == "confirm_flashcards":
+                        response += "Expected: `true` or `false`"
+                    else:
+                        response += f"Expected: {available_settings[setting_name]}"
+                    await safe_send_markdown(update, response)
+        
+        except Exception as e:
+            logger.error(f"Error updating configuration: {e}")
+            await update.message.reply_text(
+                "❌ Error updating configuration. Please try again later."
+            )
+    
+    else:
+        # Invalid number of arguments
+        response = "❌ *Invalid Usage*\n\n"
+        response += "💡 *Correct Usage:*\n"
+        response += "• `/configure` - Show all settings\n"
+        response += "• `/configure <setting> <value>` - Update a setting\n\n"
+        response += "*Examples:*\n"
+        response += "• `/configure model gpt-4o`\n"
+        response += "• `/configure confirm_flashcards true`"
+        
+        await safe_send_markdown(update, response)

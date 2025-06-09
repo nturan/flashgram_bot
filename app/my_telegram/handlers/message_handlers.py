@@ -6,12 +6,15 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from app.my_telegram.session import session_manager
+from app.my_telegram.session.config_manager import config_manager
 from app.my_graph.language_tutor import RussianTutor
 from app.common.text_processing import extract_russian_words
 from app.common.telegram_utils import safe_send_markdown
 from .learning_handlers import process_answer
 from app.flashcards.models import WordType
 from app.flashcards import flashcard_service
+from app.config import settings
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +26,16 @@ def set_russian_tutor(tutor: RussianTutor):
     """Set the Russian tutor instance for message processing."""
     global russian_tutor
     russian_tutor = tutor
+
+
+def reinit_tutor_with_model(model: str):
+    """Reinitialize the global tutor with a new model."""
+    global russian_tutor
+    logger.info(f"Reinitializing RussianTutor with model: {model}")
+    russian_tutor = RussianTutor(
+        api_key=SecretStr(settings.openai_api_key),
+        model=model
+    )
 
 
 def map_grammar_to_word_type(grammar_data: dict) -> WordType:

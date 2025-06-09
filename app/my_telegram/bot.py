@@ -9,7 +9,7 @@ from telegram.ext import (
 from app.my_graph.language_tutor import RussianTutor
 from app.my_telegram.handlers import (
     start, help_command, dashboard_command, dbstatus_command, dictionary_command,
-    learn_command, finish_command, handle_message
+    configure_command, learn_command, finish_command, handle_message
 )
 from app.my_telegram.handlers.message_handlers import set_russian_tutor
 
@@ -728,6 +728,23 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     """Start the bot with the Russian tutor."""
     # Set the tutor for message processing
     set_russian_tutor(tutor)
+    
+    # Initialize with user's configured model if available
+    try:
+        from app.my_telegram.session.config_manager import config_manager
+        from app.my_telegram.handlers.message_handlers import reinit_tutor_with_model
+        from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
+        
+        # For single user bot, we can use user_id = 1 or any fixed ID
+        user_id = 1
+        configured_model = config_manager.get_setting(user_id, "model")
+        
+        if configured_model and configured_model != tutor.default_model:
+            logger.info(f"Initializing bot with user's configured model: {configured_model}")
+            reinit_tutor_with_model(configured_model)
+            reinit_sentence_generator_llm(configured_model)
+    except Exception as e:
+        logger.warning(f"Could not load user's configured model on startup: {e}")
 
     # Create the Application
     application = Application.builder().token(token).build()
@@ -740,6 +757,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     application.add_handler(CommandHandler("finish", finish_command))
     application.add_handler(CommandHandler("dbstatus", dbstatus_command))
     application.add_handler(CommandHandler("dictionary", dictionary_command))
+    application.add_handler(CommandHandler("configure", configure_command))
     
     # Add callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))
