@@ -108,26 +108,36 @@ async def check_and_process_word(word: str) -> tuple[bool, dict]:
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Route messages between learning mode, editing mode, and normal grammar analysis."""
     user_id = update.effective_user.id
-    session = session_manager.get_session(user_id)
     
-    # Debug logging to track session state
-    logger.info(f"Message routing for user {user_id}: regenerating={session.regenerating_mode}, editing={session.editing_mode}, learning={session.learning_mode}, has_flashcard={session.current_flashcard is not None}")
+    # Check if user has chatbot mode enabled
+    use_chatbot = config_manager.get_setting(user_id, "use_chatbot")
     
-    # Check if user is in regeneration mode
-    if session.regenerating_mode:
-        logger.info(f"Routing to regeneration handler for user {user_id}")
-        await process_regeneration_hint(update, context)
-    # Check if user is in editing mode
-    elif session.editing_mode:
-        logger.info(f"Routing to editing handler for user {user_id}")
-        await process_flashcard_edit(update, context)
-    # Check if user is in learning mode
-    elif session.learning_mode and session.current_flashcard:
-        logger.info(f"Routing to answer handler for user {user_id}")
-        await process_answer(update, context)
+    if use_chatbot:
+        # Route to chatbot system
+        from .chatbot_handlers import handle_chatbot_message
+        await handle_chatbot_message(update, context)
     else:
-        logger.info(f"Routing to Russian text handler for user {user_id}")
-        await process_russian_text(update, context)
+        # Use original system
+        session = session_manager.get_session(user_id)
+        
+        # Debug logging to track session state
+        logger.info(f"Message routing for user {user_id}: regenerating={session.regenerating_mode}, editing={session.editing_mode}, learning={session.learning_mode}, has_flashcard={session.current_flashcard is not None}")
+        
+        # Check if user is in regeneration mode
+        if session.regenerating_mode:
+            logger.info(f"Routing to regeneration handler for user {user_id}")
+            await process_regeneration_hint(update, context)
+        # Check if user is in editing mode
+        elif session.editing_mode:
+            logger.info(f"Routing to editing handler for user {user_id}")
+            await process_flashcard_edit(update, context)
+        # Check if user is in learning mode
+        elif session.learning_mode and session.current_flashcard:
+            logger.info(f"Routing to answer handler for user {user_id}")
+            await process_answer(update, context)
+        else:
+            logger.info(f"Routing to Russian text handler for user {user_id}")
+            await process_russian_text(update, context)
 
 
 async def process_regeneration_hint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

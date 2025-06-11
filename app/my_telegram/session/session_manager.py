@@ -27,6 +27,9 @@ class UserSession:
     regenerating_mode: bool = False
     regenerating_flashcard_id: Optional[str] = None
     
+    # Chatbot conversation history (last 20 messages)
+    conversation_history: list = field(default_factory=list)
+    
     def clear_learning_state(self):
         """Clear learning-related session state."""
         self.learning_mode = False
@@ -50,6 +53,23 @@ class UserSession:
         self.clear_learning_state()
         self.clear_editing_state()
         self.clear_regeneration_state()
+        self.clear_conversation_history()
+    
+    def add_message_to_history(self, message):
+        """Add a message to conversation history, keeping only last 20 messages."""
+        self.conversation_history.append(message)
+        
+        # Keep only the last 20 messages
+        if len(self.conversation_history) > 20:
+            self.conversation_history = self.conversation_history[-20:]
+    
+    def clear_conversation_history(self):
+        """Clear conversation history."""
+        self.conversation_history = []
+    
+    def get_conversation_history(self):
+        """Get current conversation history."""
+        return self.conversation_history.copy()
 
 
 class SessionManager:

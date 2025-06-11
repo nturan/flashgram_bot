@@ -9,7 +9,7 @@ from telegram.ext import (
 from app.my_graph.language_tutor import RussianTutor
 from app.my_telegram.handlers import (
     start, help_command, dashboard_command, dbstatus_command, dictionary_command,
-    configure_command, learn_command, finish_command, handle_message
+    configure_command, clear_command, learn_command, finish_command, handle_message
 )
 from app.my_telegram.handlers.message_handlers import set_russian_tutor
 
@@ -729,11 +729,22 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     # Set the tutor for message processing
     set_russian_tutor(tutor)
     
+    # Initialize chatbot system
+    from app.my_graph.chatbot_tutor import ConversationalRussianTutor
+    from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
+    
+    chatbot = ConversationalRussianTutor(
+        api_key=tutor.api_key,
+        model=tutor.default_model
+    )
+    set_chatbot_tutor(chatbot)
+    
     # Initialize with user's configured model if available
     try:
         from app.my_telegram.session.config_manager import config_manager
         from app.my_telegram.handlers.message_handlers import reinit_tutor_with_model
         from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
+        from app.my_telegram.handlers.chatbot_handlers import reinit_chatbot_with_model
         
         # For single user bot, we can use user_id = 1 or any fixed ID
         user_id = 1
@@ -743,6 +754,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
             logger.info(f"Initializing bot with user's configured model: {configured_model}")
             reinit_tutor_with_model(configured_model)
             reinit_sentence_generator_llm(configured_model)
+            reinit_chatbot_with_model(configured_model)
     except Exception as e:
         logger.warning(f"Could not load user's configured model on startup: {e}")
 
@@ -758,6 +770,7 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
     application.add_handler(CommandHandler("dbstatus", dbstatus_command))
     application.add_handler(CommandHandler("dictionary", dictionary_command))
     application.add_handler(CommandHandler("configure", configure_command))
+    application.add_handler(CommandHandler("clear", clear_command))
     
     # Add callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))

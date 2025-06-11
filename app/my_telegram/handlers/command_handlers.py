@@ -39,7 +39,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "• /finish - Exit learning mode\n"
         "• /dbstatus - Check database connection status\n"
         "• /dictionary - View processed words and dictionary stats\n"
-        "• /configure - View and change bot settings\n\n"
+        "• /configure - View and change bot settings\n"
+        "• /clear - Clear chatbot conversation history\n\n"
         "Examples to try:\n"
         "- 'книга' (book) or 'стол' (table) for nouns\n"
         "- 'красивый' (beautiful) or 'хороший' (good) for adjectives\n"
@@ -303,12 +304,36 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             success = config_manager.update_setting(user_id, setting_name, value)
             
             if success:
-                # If model was updated, reinitialize both the tutor and sentence generator
+                # If model was updated, reinitialize both systems
                 if setting_name == "model":
                     from .message_handlers import reinit_tutor_with_model
                     from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
+                    from .chatbot_handlers import reinit_chatbot_with_model
+                    
                     reinit_tutor_with_model(value)
                     reinit_sentence_generator_llm(value)
+                    reinit_chatbot_with_model(value)
+                
+                # If chatbot mode was changed, inform user
+                elif setting_name == "use_chatbot":
+                    if value:
+                        response = f"✅ *Setting Updated*\n\n"
+                        response += f"📝 `{setting_name}` has been set to: `{value}`\n\n"
+                        response += "🤖 **Chatbot mode enabled!** You can now have natural conversations with me. I can:\n"
+                        response += "• Analyze Russian grammar when you ask\n"
+                        response += "• Correct mixed-language mistakes\n"
+                        response += "• Generate flashcards based on our conversation\n"
+                        response += "• Translate phrases\n"
+                        response += "• Create example sentences\n\n"
+                        response += "Try saying something like: *'Help me analyze the word стол'* or *'I tried to say Я хочу купить bread но забыл русское слово'*"
+                        await safe_send_markdown(update, response)
+                        return
+                    else:
+                        response = f"✅ *Setting Updated*\n\n"
+                        response += f"📝 `{setting_name}` has been set to: `{value}`\n\n"
+                        response += "📚 **Classic mode enabled!** Back to the original word analysis system."
+                        await safe_send_markdown(update, response)
+                        return
                 response = f"✅ *Setting Updated*\n\n"
                 response += f"📝 `{setting_name}` has been set to: `{value}`"
                 await safe_send_markdown(update, response)
@@ -346,4 +371,26 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         response += "• `/configure model gpt-4o`\n"
         response += "• `/configure confirm_flashcards true`"
         
+        await safe_send_markdown(update, response)
+
+
+async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Clear chatbot conversation history."""
+    user_id = update.effective_user.id
+    
+    # Check if user is using chatbot mode
+    use_chatbot = config_manager.get_setting(user_id, "use_chatbot")
+    
+    if use_chatbot:
+        from .chatbot_handlers import clear_chatbot_conversation
+        clear_chatbot_conversation(user_id)
+        
+        response = "🗑️ *Conversation History Cleared*\n\n"
+        response += "Your chatbot conversation history has been reset. Starting fresh!"
+        await safe_send_markdown(update, response)
+    else:
+        response = "ℹ️ *Clear Command*\n\n"
+        response += "This command clears chatbot conversation history, but you're currently in classic mode.\n\n"
+        response += "To enable chatbot mode with conversation history, use:\n"
+        response += "`/configure use_chatbot true`"
         await safe_send_markdown(update, response)
