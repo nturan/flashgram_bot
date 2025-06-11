@@ -20,13 +20,18 @@ class BaseGenerator:
     
     def create_fill_in_gap_card(self, dictionary_form: str, target_form: str, 
                                form_description: str, word_type: str, 
-                               tags: List[str], grammatical_key: str = None) -> FillInTheBlank:
+                               tags: List[str], grammatical_key: str = None, 
+                               pre_generated_sentence: str = None) -> FillInTheBlank:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
         
-        # Generate example sentence
-        sentence = self.sentence_generator.generate_example_sentence(
-            dictionary_form, target_form, form_description, word_type
-        )
+        # Use pre-generated sentence if available, otherwise generate new one
+        if pre_generated_sentence:
+            sentence = pre_generated_sentence
+        else:
+            # Generate example sentence
+            sentence = self.sentence_generator.generate_example_sentence(
+                dictionary_form, target_form, form_description, word_type
+            )
         
         # Extract stem and suffix
         stem, suffix = self.suffix_extractor.extract_suffix(dictionary_form, target_form)

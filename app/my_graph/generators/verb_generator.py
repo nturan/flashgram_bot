@@ -1,7 +1,7 @@
 """Verb-specific flashcard generator."""
 
 import logging
-from typing import List, Any
+from typing import List, Any, Dict
 from app.grammar.russian import Verb
 from app.flashcards.models import MultipleChoice
 from .base_generator import BaseGenerator
@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 class VerbGenerator(BaseGenerator):
     """Generates flashcards specifically for Russian verbs."""
     
-    def generate_flashcards_from_grammar(self, verb: Verb, word_type: str = "verb") -> List[Any]:
+    def generate_flashcards_from_grammar(self, verb: Verb, word_type: str = "verb", generated_sentences: Dict[str, str] = None) -> List[Any]:
         """Generate flashcards for a Russian verb."""
+        if generated_sentences is None:
+            generated_sentences = {}
         flashcards = []
         dictionary_form = verb.dictionary_form
         

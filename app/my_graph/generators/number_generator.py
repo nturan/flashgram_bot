@@ -1,7 +1,7 @@
 """Number-specific flashcard generator."""
 
 import logging
-from typing import List, Any
+from typing import List, Any, Dict
 from app.grammar.russian import Number
 from .base_generator import BaseGenerator
 
@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 class NumberGenerator(BaseGenerator):
     """Generates flashcards specifically for Russian numbers."""
     
-    def generate_flashcards_from_grammar(self, number: Number, word_type: str = "number") -> List[Any]:
+    def generate_flashcards_from_grammar(self, number: Number, word_type: str = "number", generated_sentences: Dict[str, str] = None) -> List[Any]:
         """Generate flashcards for a Russian number."""
+        if generated_sentences is None:
+            generated_sentences = {}
         flashcards = []
         dictionary_form = number.dictionary_form
         

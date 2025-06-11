@@ -1,7 +1,7 @@
 """Pronoun-specific flashcard generator."""
 
 import logging
-from typing import List, Any
+from typing import List, Any, Dict
 from app.grammar.russian import Pronoun
 from .base_generator import BaseGenerator
 
@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 class PronounGenerator(BaseGenerator):
     """Generates flashcards specifically for Russian pronouns."""
     
-    def generate_flashcards_from_grammar(self, pronoun: Pronoun, word_type: str = "pronoun") -> List[Any]:
+    def generate_flashcards_from_grammar(self, pronoun: Pronoun, word_type: str = "pronoun", generated_sentences: Dict[str, str] = None) -> List[Any]:
         """Generate flashcards for a Russian pronoun."""
+        if generated_sentences is None:
+            generated_sentences = {}
         flashcards = []
         dictionary_form = pronoun.dictionary_form
         

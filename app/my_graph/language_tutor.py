@@ -25,6 +25,7 @@ from app.grammar.russian import (
   Number,
 )
 from app.my_graph.flashcard_generator import flashcard_generator
+from app.my_graph.sentence_generation import LLMSentenceGenerator
 
 class State(TypedDict):
     original_human_input: str
@@ -38,6 +39,7 @@ class State(TypedDict):
     generate_flashcards: Optional[bool]
     flashcards_generated: Optional[int]
     flashcard_generation_message: Optional[str]
+    sentences_generated: Optional[Dict[str, str]]  # Map of form_key -> generated_sentence
 
 
 class RussianTutor:
@@ -82,6 +84,7 @@ class RussianTutor:
             | PydanticOutputParser(pydantic_object=Number)
         )
 
+        self.sentence_generator = LLMSentenceGenerator()
         self.graph = self._build_graph()
 
     def initial_classification(
@@ -226,8 +229,11 @@ class RussianTutor:
                 word_type = "number"
             
             if grammar_obj and word_type:
-                # Generate flashcards
-                flashcards = flashcard_generator.generate_flashcards_from_grammar(grammar_obj, word_type)
+                # Generate flashcards with pre-generated sentences
+                generated_sentences = state.get("sentences_generated", {})
+                flashcards = flashcard_generator.generate_flashcards_from_grammar(
+                    grammar_obj, word_type, generated_sentences
+                )
                 
                 # Save flashcards to database
                 saved_count = flashcard_generator.save_flashcards_to_database(flashcards)
@@ -257,6 +263,122 @@ class RussianTutor:
                 "flashcard_generation_message": error_message
             }
 
+    def generate_sentences(
+            self, state: State, writer: Optional[StreamWriter] = None, config: Optional[RunnableConfig] = None,
+    ) -> State:
+        """Generate example sentences for important grammatical forms."""
+        if writer and hasattr(writer, 'write'):
+            writer.write("Generating example sentences...\n")
+
+        try:
+            sentences = {}
+            grammar_obj = None
+            word_type = None
+            
+            # Determine which grammar object to use
+            if state.get("noun_grammar"):
+                grammar_obj = state["noun_grammar"]
+                word_type = "noun"
+            elif state.get("adjective_grammar"):
+                grammar_obj = state["adjective_grammar"] 
+                word_type = "adjective"
+            elif state.get("verb_grammar"):
+                grammar_obj = state["verb_grammar"]
+                word_type = "verb"
+            elif state.get("pronoun_grammar"):
+                grammar_obj = state["pronoun_grammar"]
+                word_type = "pronoun"
+            elif state.get("number_grammar"):
+                grammar_obj = state["number_grammar"]
+                word_type = "number"
+            
+            if grammar_obj and word_type:
+                # Generate sentences based on word type
+                sentences = self._generate_key_sentences(grammar_obj, word_type)
+                
+                return {
+                    **state,
+                    "sentences_generated": sentences
+                }
+            else:
+                return {
+                    **state,
+                    "sentences_generated": {}
+                }
+                
+        except Exception as e:
+            error_message = f"Error generating sentences: {str(e)}"
+            if writer and hasattr(writer, 'write'):
+                writer.write(f"{error_message}\n")
+                
+            return {
+                **state,
+                "sentences_generated": {}
+            }
+
+    def _generate_key_sentences(self, grammar_obj: Any, word_type: str) -> Dict[str, str]:
+        """Generate example sentences for key grammatical forms."""
+        sentences = {}
+        dictionary_form = grammar_obj.dictionary_form
+        
+        try:
+            if word_type == "noun":
+                # Generate sentences for key cases
+                key_forms = [
+                    ("nominative_singular", grammar_obj.nominative.singular, "nominative singular"),
+                    ("genitive_singular", grammar_obj.genitive.singular, "genitive singular"),
+                    ("accusative_singular", grammar_obj.accusative.singular, "accusative singular"),
+                ]
+                
+            elif word_type == "adjective":
+                # Generate sentences for key gender forms
+                key_forms = [
+                    ("masculine_nominative", grammar_obj.masculine.nominative, "masculine nominative"),
+                    ("feminine_nominative", grammar_obj.feminine.nominative, "feminine nominative"),
+                    ("neuter_nominative", grammar_obj.neuter.nominative, "neuter nominative"),
+                ]
+                
+            elif word_type == "verb":
+                # Generate sentences for key tense/person forms
+                key_forms = [
+                    ("present_1sg", grammar_obj.present.first_person_singular, "present 1st person singular"),
+                    ("present_3sg", grammar_obj.present.third_person_singular, "present 3rd person singular"),
+                    ("past_masculine", grammar_obj.past_masculine, "past masculine"),
+                ]
+                
+            elif word_type == "pronoun":
+                # Generate sentences for key case forms
+                key_forms = [
+                    ("nominative", grammar_obj.nominative, "nominative"),
+                    ("accusative", grammar_obj.accusative, "accusative"),
+                    ("genitive", grammar_obj.genitive, "genitive"),
+                ]
+                
+            elif word_type == "number":
+                # Generate sentences for key forms
+                key_forms = [
+                    ("nominative", grammar_obj.nominative, "nominative"),
+                    ("genitive", grammar_obj.genitive, "genitive"),
+                ]
+            else:
+                key_forms = []
+            
+            # Generate sentences for each key form
+            for form_key, target_form, form_description in key_forms:
+                if target_form and target_form.strip():
+                    try:
+                        sentence = self.sentence_generator.generate_example_sentence(
+                            dictionary_form, target_form, form_description, word_type
+                        )
+                        sentences[form_key] = sentence
+                    except Exception as e:
+                        logger.warning(f"Failed to generate sentence for {form_key}: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Error generating key sentences: {e}")
+            
+        return sentences
+
     def _build_graph(self) -> RunnableSerializable:
         """Build the LangGraph for the Russian language tutor"""
 
@@ -269,6 +391,7 @@ class RussianTutor:
         workflow.add_node("get_verb_grammar", self.get_verb_grammar)
         workflow.add_node("get_pronoun_grammar", self.get_pronoun_grammar)
         workflow.add_node("get_number_grammar", self.get_number_grammar)
+        workflow.add_node("sentence_generation", self.generate_sentences)
         workflow.add_node("flashcard_generation", self.generate_flashcards)
 
         # Define the edges
@@ -290,16 +413,19 @@ class RussianTutor:
             }
         )
 
-        # Route from grammar nodes to either flashcard generation or END
+        # Route from grammar nodes to either sentence generation or END
         def should_generate_flashcards(state):
-            return "flashcard_generation" if state.get("generate_flashcards") else "__end__"
+            return "sentence_generation" if state.get("generate_flashcards") else "__end__"
         
-        # Connect grammar nodes to conditional flashcard generation
+        # Connect grammar nodes to conditional sentence generation
         workflow.add_conditional_edges("get_noun_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_adjective_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_verb_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_pronoun_grammar", should_generate_flashcards)
         workflow.add_conditional_edges("get_number_grammar", should_generate_flashcards)
+        
+        # Connect sentence generation to flashcard generation
+        workflow.add_edge("sentence_generation", "flashcard_generation")
         
         # Connect flashcard generation to END
         workflow.add_edge("flashcard_generation", END)
@@ -321,10 +447,13 @@ class RussianTutor:
             "noun_grammar": None,
             "adjective_grammar": None,
             "verb_grammar": None,
+            "pronoun_grammar": None,
+            "number_grammar": None,
             "final_answer": None,
             "generate_flashcards": generate_flashcards,
             "flashcards_generated": None,
-            "flashcard_generation_message": None
+            "flashcard_generation_message": None,
+            "sentences_generated": None
         }
 
         # Execute the graph

@@ -1,7 +1,7 @@
 """Adjective-specific flashcard generator."""
 
 import logging
-from typing import List, Any
+from typing import List, Any, Dict
 from app.grammar.russian import Adjective
 from .base_generator import BaseGenerator
 
@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 class AdjectiveGenerator(BaseGenerator):
     """Generates flashcards specifically for Russian adjectives."""
     
-    def generate_flashcards_from_grammar(self, adjective: Adjective, word_type: str = "adjective") -> List[Any]:
+    def generate_flashcards_from_grammar(self, adjective: Adjective, word_type: str = "adjective", generated_sentences: Dict[str, str] = None) -> List[Any]:
         """Generate flashcards for a Russian adjective."""
+        if generated_sentences is None:
+            generated_sentences = {}
         flashcards = []
         dictionary_form = adjective.dictionary_form
         
