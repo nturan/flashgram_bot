@@ -16,12 +16,8 @@ initial_classification_prompt = ChatPromptTemplate(
        "You are a helpful assistant that helps the user to learn russian."
        "You will be given a word in english, german, turkish, azerbaijani or russian."
        "If the word is in russian find its dictionary form and classify it as a noun, number, verb, adjective, adverb, preposition, or pronoun."
+       "To classify the word, make sure to take the role of the word in a sentence into account."
        "If the word is in any other language, translate it to russian and classify it as a noun, number, verb, adjective, adverb, preposition, or pronoun."
-       "\nIMPORTANT: Pay special attention to NUMBERS (числительные):"
-       "\n- Cardinal numbers: один/одна/одно, два, три, четыре, пять, шесть, семь, восемь, девять, десять, одиннадцать, двенадцать, тринадцать, четырнадцать, пятнадцать, шестнадцать, семнадцать, восемнадцать, девятнадцать, двадцать, тридцать, сорок, пятьдесят, шестьдесят, семьдесят, восемьдесят, девяносто, сто, двести, триста, четыреста, пятьсот, шестьсот, семьсот, восемьсот, девятьсот, тысяча, миллион, миллиард"
-       "\n- Ordinal numbers: первый, второй, третий, четвёртый, пятый, etc."
-       "\n- Collective numbers: двое, трое, четверо, пятеро, etc."
-       "\nEven if a number behaves grammatically like an adjective or noun, it should still be classified as 'number'."
        "\nYour response MUST be a valid JSON object matching this schema:\n"
        "{format_instructions}\n"
      )),

@@ -143,11 +143,7 @@ class Verb(BaseModel):
     aspect_pair: Optional[str] = None  # The verb's aspectual partner (if it exists)
     
     # Motion verb characteristics
-    unidirectional: bool = False  # For motion verbs like идти vs ехать
-    multidirectional: bool = False  # For motion verbs like ходить vs ездить
-    
-    # Conjugation pattern (1st or 2nd conjugation)
-    conjugation: Literal["first", "second", "irregular"]
+    directionality: Literal["unidirectional", "multidirectional", "both", "none"] = "none"
     
     # Present tense forms (only for imperfective verbs)
     present_first_singular: Optional[str] = None
@@ -192,9 +188,7 @@ class Verb(BaseModel):
             "  \"english_translation\": \"string\",\n"
             "  \"aspect\": \"perfective\" | \"imperfective\" | \"both\",\n"
             "  \"aspect_pair\": \"string or null (the aspectual partner verb if it exists)\",\n"
-            "  \"unidirectional\": true | false,\n"
-            "  \"multidirectional\": true | false,\n"
-            "  \"conjugation\": \"first\" | \"second\" | \"irregular\",\n"
+            "  \"directionality\": \"unidirectional\" | \"multidirectional\" | \"both\" | \"none\",\n"
             "  \"present_first_singular\": \"string or null (я form, only for imperfective verbs)\",\n"
             "  \"present_second_singular\": \"string or null (ты form, only for imperfective verbs)\",\n"
             "  \"present_third_singular\": \"string or null (он/она/оно form, only for imperfective verbs)\",\n"
@@ -227,17 +221,6 @@ class Verb(BaseModel):
 class Pronoun(BaseModel):
     dictionary_form: str
     english_translation: str
-    pronoun_type: Literal["personal", "possessive", "demonstrative", "interrogative", "relative", "indefinite", "negative"]
-    
-    # Person and number (for personal pronouns)
-    person: Optional[Person] = None
-    number: Optional[Number] = None
-    
-    # Gender (some pronouns have gender, like он/она/оно)
-    gender: Optional[Gender] = None
-    
-    # Declension pattern - some pronouns decline like nouns, others like adjectives
-    declension_pattern: Literal["noun_like", "adjective_like", "special"]
     
     # Declensions - structure depends on the pattern
     # For personal pronouns (noun-like): simple case forms
@@ -260,11 +243,6 @@ class Pronoun(BaseModel):
             "{\n"
             "  \"dictionary_form\": \"string (base form of the pronoun)\",\n"
             "  \"english_translation\": \"string\",\n"
-            "  \"pronoun_type\": \"personal\" | \"possessive\" | \"demonstrative\" | \"interrogative\" | \"relative\" | \"indefinite\" | \"negative\",\n"
-            "  \"person\": \"first\" | \"second\" | \"third\" | null,\n"
-            "  \"number\": \"singular\" | \"plural\" | null,\n"
-            "  \"gender\": \"masculine\" | \"feminine\" | \"neuter\" | null,\n"
-            "  \"declension_pattern\": \"noun_like\" | \"adjective_like\" | \"special\",\n"
             "  \"singular\": {\n"
             "    \"nom\": \"string\",\n"
             "    \"gen\": \"string\",\n"
@@ -325,23 +303,7 @@ class Pronoun(BaseModel):
 class Number(BaseModel):
     dictionary_form: str
     english_translation: str
-    numeric_value: int  # The actual number (1, 2, 3, etc.)
-    number_type: Literal["cardinal", "ordinal", "collective"]
     
-    # Number category affects declension pattern
-    number_category: Literal[
-        "one",           # один/одна/одно (declines like adjective)
-        "two_three_four", # два/три/четыре (special pattern)
-        "five_twenty",   # пять-двадцать (like feminine nouns ending in ь)
-        "tens",          # тридцать, сорок, etc. (special patterns)
-        "hundreds",      # сто, двести, триста, etc. (special patterns)
-        "thousands",     # тысяча (like feminine noun)
-        "compound",      # compound numbers (двадцать один, etc.)
-        "special"        # irregular numbers
-    ]
-    
-    # Gender (for числительные that have gender like один/одна/одно)
-    gender: Optional[Gender] = None
     
     # Declension patterns vary by category
     # For "one" type - adjective-like declension with gender
@@ -355,9 +317,7 @@ class Number(BaseModel):
     
     # Special case forms for compound numbers
     compound_forms: Optional[Dict[str, str]] = None
-    
-    # Usage notes for complex numbers
-    usage_notes: Optional[str] = None
+
     
     # Agreement patterns (what case the counted noun takes)
     noun_agreement: Optional[Dict[Case, str]] = None
@@ -369,10 +329,6 @@ class Number(BaseModel):
             "{\n"
             "  \"dictionary_form\": \"string (base form of the number)\",\n"
             "  \"english_translation\": \"string\",\n"
-            "  \"numeric_value\": number (1, 2, 3, etc.),\n"
-            "  \"number_type\": \"cardinal\" | \"ordinal\" | \"collective\",\n"
-            "  \"number_category\": \"one\" | \"two_three_four\" | \"five_twenty\" | \"tens\" | \"hundreds\" | \"thousands\" | \"compound\" | \"special\",\n"
-            "  \"gender\": \"masculine\" | \"feminine\" | \"neuter\" | null,\n"
             "  \"masculine\": {\n"
             "    \"nom\": \"string\",\n"
             "    \"gen\": \"string\",\n"
@@ -413,8 +369,6 @@ class Number(BaseModel):
             "    \"ins\": \"string\",\n"
             "    \"pre\": \"string\"\n"
             "  } | null,\n"
-            "  \"compound_forms\": object | null,\n"
-            "  \"usage_notes\": \"string | null\",\n"
             "  \"noun_agreement\": {\n"
             "    \"nom\": \"string (what case nouns take when number is nominative)\",\n"
             "    \"gen\": \"string (what case nouns take when number is genitive)\",\n"
@@ -424,17 +378,5 @@ class Number(BaseModel):
             "    \"pre\": \"string (what case nouns take when number is prepositional)\"\n"
             "  } | null\n"
             "}\n"
-            "Important: Choose the correct category and use appropriate fields:\n"
-            "- 'one': один/одна/одно - use masculine/feminine/neuter fields (adjective-like)\n"
-            "- 'two_three_four': два, три, четыре - use singular field\n"
-            "- 'five_twenty': пять-двадцать - use singular field\n"
-            "- 'tens': тридцать, сорок, пятьдесят-девяносто - use singular field\n"
-            "- 'hundreds': сто, двести, триста-девятьсот - use singular field\n"
-            "- 'thousands': тысяча, миллион, etc. - use singular/plural fields\n"
-            "- 'compound': complex numbers like двадцать один - use compound_forms\n"
-            "Include noun_agreement patterns using short case names (nom/gen/dat/acc/ins/pre):\n"
-            "- For 2-4: usually genitive singular for counted nouns\n"
-            "- For 5+: usually genitive plural for counted nouns\n"
-            "Example: {\"nom\": \"genitive_singular\", \"gen\": \"genitive_singular\", ...}\""
         )
 
