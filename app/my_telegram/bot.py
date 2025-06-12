@@ -6,12 +6,14 @@ from telegram.ext import (
     filters,
 )
 
-from app.my_graph.language_tutor import RussianTutor
+from app.my_graph.chatbot_tutor import ConversationalRussianTutor
 from app.my_telegram.handlers import (
     start, help_command, dashboard_command, dbstatus_command, dictionary_command,
     configure_command, clear_command, learn_command, finish_command, handle_message
 )
-from app.my_telegram.handlers.message_handlers import set_russian_tutor
+from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
+from app.config import settings
+from pydantic import SecretStr
 
 # Legacy callback handlers using new session manager
 import json
@@ -724,25 +726,18 @@ async def regenerate_flashcard_sentence(update_or_query, flashcard_id: str, hint
 
 # process_russian_text moved to app.my_telegram.handlers.text_processors
 
-def init_application(token: str, tutor: RussianTutor) -> Application:
-    """Start the bot with the Russian tutor."""
-    # Set the tutor for message processing
-    set_russian_tutor(tutor)
-    
+def init_application(token: str) -> Application:
+    """Start the bot with the chatbot system."""    
     # Initialize chatbot system
-    from app.my_graph.chatbot_tutor import ConversationalRussianTutor
-    from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
-    
     chatbot = ConversationalRussianTutor(
-        api_key=tutor.api_key,
-        model=tutor.default_model
+        api_key=SecretStr(settings.openai_api_key),
+        model=settings.llm_model
     )
     set_chatbot_tutor(chatbot)
     
     # Initialize with user's configured model if available
     try:
         from app.my_telegram.session.config_manager import config_manager
-        from app.my_telegram.handlers.message_handlers import reinit_tutor_with_model
         from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
         from app.my_telegram.handlers.chatbot_handlers import reinit_chatbot_with_model
         
@@ -750,9 +745,8 @@ def init_application(token: str, tutor: RussianTutor) -> Application:
         user_id = 1
         configured_model = config_manager.get_setting(user_id, "model")
         
-        if configured_model and configured_model != tutor.default_model:
+        if configured_model and configured_model != settings.llm_model:
             logger.info(f"Initializing bot with user's configured model: {configured_model}")
-            reinit_tutor_with_model(configured_model)
             reinit_sentence_generator_llm(configured_model)
             reinit_chatbot_with_model(configured_model)
     except Exception as e:

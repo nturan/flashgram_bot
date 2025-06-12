@@ -15,14 +15,12 @@ class UserConfig:
     # Available settings
     model: str = "gpt-4o-mini"  # Default model
     confirm_flashcards: bool = False  # Default flashcard confirmation setting
-    use_chatbot: bool = False  # Whether to use conversational chatbot mode
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
             "model": self.model,
-            "confirm_flashcards": self.confirm_flashcards,
-            "use_chatbot": self.use_chatbot
+            "confirm_flashcards": self.confirm_flashcards
         }
     
     def update_setting(self, setting_name: str, value: Any) -> bool:
@@ -51,18 +49,6 @@ class UserConfig:
                 elif value.lower() in ["false", "no", "0", "off"]:
                     self.confirm_flashcards = False
                     return True
-        elif setting_name == "use_chatbot":
-            if isinstance(value, bool):
-                self.use_chatbot = value
-                return True
-            elif isinstance(value, str):
-                # Handle string boolean values
-                if value.lower() in ["true", "yes", "1", "on"]:
-                    self.use_chatbot = True
-                    return True
-                elif value.lower() in ["false", "no", "0", "off"]:
-                    self.use_chatbot = False
-                    return True
         
         return False
     
@@ -79,8 +65,6 @@ class UserConfig:
             return self.model
         elif setting_name == "confirm_flashcards":
             return self.confirm_flashcards
-        elif setting_name == "use_chatbot":
-            return self.use_chatbot
         return None
 
 
@@ -158,8 +142,7 @@ class ConfigManager:
         """
         return {
             "model": "LLM model name (e.g., gpt-4o-mini, gpt-4o)",
-            "confirm_flashcards": "Whether to ask for confirmation before creating flashcards (true/false)",
-            "use_chatbot": "Whether to use conversational chatbot mode (true/false)"
+            "confirm_flashcards": "Whether to ask for confirmation before creating flashcards (true/false)"
         }
 
 
