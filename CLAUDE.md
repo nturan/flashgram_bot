@@ -105,6 +105,17 @@ The bot now uses a **conversational chatbot as the primary interaction method**:
 - The bot requires OpenAI API access for LLM functionality
 - **IMPORTANT**: Never install packages directly with pip/conda. Always add them to requirements.txt first, then run `pip install -r requirements.txt`
 
+**Testing:**
+- **CRITICAL**: Always run tests after making any code changes: `python -m pytest tests/ -v`
+- Current test count: 85 tests covering models, generation, database, FastAPI, Telegram bot, and MongoDB
+- All tests must pass before considering changes complete
+- Run tests frequently during development to catch issues early
+
+**Version Control:**
+- **NEVER use git commands** - all git operations are handled by the user
+- Do not commit, push, pull, or perform any git operations
+- Focus only on code changes and testing
+
 **Adding New Features:**
 - Register new command handlers in `app/my_telegram/bot.py`
 - Add new chatbot tools in `app/my_graph/chatbot_tutor.py`
