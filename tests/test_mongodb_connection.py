@@ -119,32 +119,42 @@ class TestMongoDBConnection:
         except (ConnectionFailure, ServerSelectionTimeoutError):
             pytest.skip("MongoDB connection not available for testing")
     
-    def test_connection_timeout_settings(self):
+    @patch('app.flashcards.database.MongoClient')
+    def test_connection_timeout_settings(self, mock_client):
         """Test that connection timeout settings are properly configured."""
-        try:
-            with patch('app.flashcards.database.MongoClient') as mock_client:
-                # Mock successful connection
-                mock_instance = Mock()
-                mock_instance.admin.command.return_value = True
-                mock_client.return_value = mock_instance
-                
-                db = FlashcardDatabaseV2()
-                
-                # Verify MongoClient was called with timeout settings
-                mock_client.assert_called_once()
-                call_args = mock_client.call_args
-                
-                # Check that timeout parameters were passed in kwargs
-                if call_args and len(call_args) > 1:
-                    kwargs = call_args[1]
-                    assert 'serverSelectionTimeoutMS' in kwargs
-                    assert 'connectTimeoutMS' in kwargs
-                    assert 'socketTimeoutMS' in kwargs
-                    
-                    # Verify timeout values
-                    assert kwargs['serverSelectionTimeoutMS'] == 5000
-                    assert kwargs['connectTimeoutMS'] == 5000
-                    assert kwargs['socketTimeoutMS'] == 5000
-                
-        except Exception as e:
-            pytest.fail(f"Connection timeout test failed: {e}")
+        # Mock successful connection with proper subscriptable behavior
+        mock_instance = MagicMock()
+        mock_instance.admin.command.return_value = True
+        
+        # Mock database and collection access
+        mock_db = MagicMock()
+        mock_collection = MagicMock()
+        mock_instance.__getitem__.return_value = mock_db
+        mock_db.dev = mock_collection
+        mock_db.dictionary_words = mock_collection
+        
+        mock_client.return_value = mock_instance
+        
+        # Create database instance (this will call _connect)
+        db = FlashcardDatabaseV2()
+        
+        # Verify MongoClient was called with correct arguments
+        mock_client.assert_called_once()
+        
+        # Get the call arguments
+        call_args, call_kwargs = mock_client.call_args
+        
+        # Check that the connection string was passed as first argument
+        assert len(call_args) >= 1
+        connection_string = call_args[0]
+        assert "mongodb+srv://" in connection_string
+        
+        # Check that timeout parameters were passed as keyword arguments
+        assert 'serverSelectionTimeoutMS' in call_kwargs
+        assert 'connectTimeoutMS' in call_kwargs
+        assert 'socketTimeoutMS' in call_kwargs
+        
+        # Verify timeout values
+        assert call_kwargs['serverSelectionTimeoutMS'] == 5000
+        assert call_kwargs['connectTimeoutMS'] == 5000
+        assert call_kwargs['socketTimeoutMS'] == 5000

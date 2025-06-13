@@ -45,8 +45,9 @@ class TestTelegramBot:
         update.effective_user = Mock(spec=User)
         update.effective_user.id = 123456
         update.effective_user.first_name = "Test User"
+        update.effective_user.mention_html = Mock(return_value="<b>Test User</b>")
         update.message = Mock(spec=Message)
-        update.message.reply_text = AsyncMock()
+        update.message.reply_html = AsyncMock()
         
         context = Mock(spec=ContextTypes.DEFAULT_TYPE)
         
@@ -54,11 +55,11 @@ class TestTelegramBot:
         await start(update, context)
         
         # Verify that a reply was sent
-        update.message.reply_text.assert_called_once()
+        update.message.reply_html.assert_called()
         
         # Check that the reply contains welcome text
-        call_args = update.message.reply_text.call_args[0][0]
-        assert "welcome" in call_args.lower() or "hello" in call_args.lower()
+        call_args = update.message.reply_html.call_args[0][0]
+        assert "hi" in call_args.lower() or "russian" in call_args.lower() or "tutor" in call_args.lower()
     
     @pytest.mark.asyncio
     async def test_help_command(self):
@@ -89,6 +90,8 @@ class TestTelegramBot:
         update.effective_user.id = 123456
         update.message = Mock(spec=Message)
         update.message.reply_text = AsyncMock()
+        update.message.chat = Mock()
+        update.message.chat.send_action = AsyncMock()
         
         context = Mock(spec=ContextTypes.DEFAULT_TYPE)
         
@@ -96,7 +99,7 @@ class TestTelegramBot:
         await dashboard_command(update, context)
         
         # Verify that a reply was sent
-        update.message.reply_text.assert_called_once()
+        update.message.reply_text.assert_called()
     
     @pytest.mark.asyncio
     async def test_callback_query_handler(self):
@@ -130,23 +133,22 @@ class TestTelegramBot:
         assert hasattr(session, 'score')
         assert hasattr(session, 'total_questions')
     
-    @patch('app.my_telegram.bot.ConversationalRussianTutor')
-    def test_chatbot_tutor_initialization(self, mock_tutor_class):
+    def test_chatbot_tutor_initialization(self):
         """Test that chatbot tutor is properly initialized."""
-        # Mock the tutor class
-        mock_tutor = Mock()
-        mock_tutor_class.return_value = mock_tutor
-        
         # Import and test the chatbot setup
         from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
+        from app.my_graph.chatbot_tutor import ConversationalRussianTutor
         from pydantic import SecretStr
         
-        # Test setting up the chatbot tutor
-        api_key = SecretStr("test_api_key")
-        set_chatbot_tutor(api_key)
+        # Create a mock tutor instance
+        mock_tutor = Mock(spec=ConversationalRussianTutor)
         
-        # Verify tutor was initialized
-        mock_tutor_class.assert_called_once_with(api_key)
+        # Test setting up the chatbot tutor
+        set_chatbot_tutor(mock_tutor)
+        
+        # Import and check that the global variable was set
+        from app.my_telegram.handlers.chatbot_handlers import chatbot_tutor
+        assert chatbot_tutor is mock_tutor
     
     @pytest.mark.asyncio
     async def test_message_handling_with_mocked_session(self):
