@@ -103,6 +103,7 @@ The bot now uses a **conversational chatbot as the primary interaction method**:
 **Python Environment:**
 - Always use `conda activate flashgram-bot` before running any Python code
 - The bot requires OpenAI API access for LLM functionality
+- **IMPORTANT**: Never install packages directly with pip/conda. Always add them to requirements.txt first, then run `pip install -r requirements.txt`
 
 **Adding New Features:**
 - Register new command handlers in `app/my_telegram/bot.py`

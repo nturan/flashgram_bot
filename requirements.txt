@@ -9,3 +9,5 @@ langgraph==0.4.8
 langchain-openai==0.3.19
 pymongo>=4.13.0
 pytest==8.4.0
+pytest-asyncio==0.24.0
+httpx==0.28.1
