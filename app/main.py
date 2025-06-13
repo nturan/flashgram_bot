@@ -31,12 +31,14 @@ def read_root():
 def run_fastapi():
     uvicorn.run(app, host="0.0.0.0", port=8080, reload=False)
 
+
 # Main async function to start the Telegram bot
 def start_bot():
     # Initialize the bot
     bot = init_application(settings.token)
     logger.info("Starting Telegram bot...")
     bot.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 # Entry point
 if __name__ == "__main__":

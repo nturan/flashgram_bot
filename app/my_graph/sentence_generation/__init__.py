@@ -3,4 +3,4 @@
 from .llm_sentence_generator import LLMSentenceGenerator
 from .text_processor import TextProcessor
 
-__all__ = ['LLMSentenceGenerator', 'TextProcessor']
+__all__ = ["LLMSentenceGenerator", "TextProcessor"]

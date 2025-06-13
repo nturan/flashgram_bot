@@ -3,4 +3,4 @@
 from .suffix_extractor import SuffixExtractor
 from .form_analyzer import FormAnalyzer
 
-__all__ = ['SuffixExtractor', 'FormAnalyzer']
+__all__ = ["SuffixExtractor", "FormAnalyzer"]

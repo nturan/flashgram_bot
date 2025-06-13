@@ -17,7 +17,9 @@ def get_sentence_generator_llm():
     """Get the global LLM instance for sentence generation."""
     global _global_llm
     if _global_llm is None:
-        _global_llm = ChatOpenAI(api_key=SecretStr(settings.openai_api_key), model=settings.llm_model)
+        _global_llm = ChatOpenAI(
+            api_key=SecretStr(settings.openai_api_key), model=settings.llm_model
+        )
     return _global_llm
 
 
@@ -30,21 +32,25 @@ def reinit_sentence_generator_llm(model: str):
 
 class LLMSentenceGenerator:
     """Generates example sentences using LLM for specific grammatical forms."""
-    
+
     def __init__(self):
         self.text_processor = TextProcessor()
-    
+
     @property
     def llm(self):
         """Get the current LLM instance."""
         return get_sentence_generator_llm()
-    
-    def generate_example_sentence(self, word: str, form: str, case_or_form_description: str, word_type: str) -> str:
+
+    def generate_example_sentence(
+        self, word: str, form: str, case_or_form_description: str, word_type: str
+    ) -> str:
         """Generate an example sentence using the LLM for a specific grammatical form."""
         try:
             # Generate verification question based on word type and form
-            verification_guidance = self._get_verification_guidance(case_or_form_description, word_type)
-            
+            verification_guidance = self._get_verification_guidance(
+                case_or_form_description, word_type
+            )
+
             prompt = f"""Generate a simple, natural Russian sentence that uses the word "{form}" ({case_or_form_description} form of "{word}").
 
 CRITICAL VERIFICATION: {verification_guidance}
@@ -63,26 +69,28 @@ Requirements:
 - Return ONLY the Russian sentence, nothing else
 
 Example format: "Я читаю интересную книгу в библиотеке."""
-            
+
             response = self.llm.invoke([HumanMessage(content=prompt)])
             sentence = response.content.strip()
-            
+
             # Clean the sentence of problematic characters
             sentence = self.text_processor.clean_sentence_for_telegram(sentence)
-            
+
             # Basic validation - ensure the target form appears in the sentence
             if form.lower() in sentence.lower():
                 return sentence
             else:
                 # Fallback if LLM didn't include the form
                 return f"В этом предложении используется слово {form}."
-                
+
         except Exception as e:
             logger.error(f"Error generating example sentence: {e}")
             # Fallback sentence
             return f"Пример использования: {form}."
-    
-    def generate_contextual_sentence(self, word: str, form: str, grammatical_key: str, hint: str) -> str:
+
+    def generate_contextual_sentence(
+        self, word: str, form: str, grammatical_key: str, hint: str
+    ) -> str:
         """Generate a contextual sentence with a specific hint."""
         try:
             prompt = f"""Generate a simple, natural Russian sentence that uses the word "{form}" ({grammatical_key} form of "{word}") in the context of {hint}.
@@ -97,26 +105,32 @@ Requirements:
 - Return ONLY the Russian sentence, nothing else
 
 Example format: "Я читаю интересную книгу в библиотеке."""
-            
+
             response = self.llm.invoke([HumanMessage(content=prompt)])
             hint_sentence = response.content.strip()
-            hint_sentence = self.text_processor.clean_sentence_for_telegram(hint_sentence)
-            
+            hint_sentence = self.text_processor.clean_sentence_for_telegram(
+                hint_sentence
+            )
+
             # Use the hint-based sentence if it contains the target form
             if form.lower() in hint_sentence.lower():
                 return hint_sentence
             else:
                 # Fallback to default generation
-                return self.generate_example_sentence(word, form, grammatical_key, "word")
-                
+                return self.generate_example_sentence(
+                    word, form, grammatical_key, "word"
+                )
+
         except Exception as e:
             logger.warning(f"LLM hint generation failed: {e}, using default generation")
             return self.generate_example_sentence(word, form, grammatical_key, "word")
-    
-    def _get_verification_guidance(self, case_or_form_description: str, word_type: str) -> str:
+
+    def _get_verification_guidance(
+        self, case_or_form_description: str, word_type: str
+    ) -> str:
         """Generate verification guidance based on word type and grammatical form."""
         description_lower = case_or_form_description.lower()
-        
+
         # Handle noun cases
         if word_type == "noun" or "case" in description_lower:
             if "nominative" in description_lower or "nom" in description_lower:
@@ -131,21 +145,39 @@ Example format: "Я читаю интересную книгу в библиот
                 return "Ask 'Кем? Чем?' - the word should answer 'by whom?' or 'with what?' (means, accompaniment)."
             elif "prepositional" in description_lower or "pre" in description_lower:
                 return "Ask 'О ком? О чём? Где?' - the word should answer 'about whom/what?' or 'where?' (location, topic)."
-        
+
         # Handle verb forms
         elif word_type == "verb":
             if "present" in description_lower:
-                if "1st person singular" in description_lower or "я" in description_lower:
+                if (
+                    "1st person singular" in description_lower
+                    or "я" in description_lower
+                ):
                     return "Verify: Can you substitute 'я' (I) as the subject performing this action right now?"
-                elif "2nd person singular" in description_lower or "ты" in description_lower:
+                elif (
+                    "2nd person singular" in description_lower
+                    or "ты" in description_lower
+                ):
                     return "Verify: Can you substitute 'ты' (you) as the subject performing this action right now?"
-                elif "3rd person singular" in description_lower or "он/она/оно" in description_lower:
+                elif (
+                    "3rd person singular" in description_lower
+                    or "он/она/оно" in description_lower
+                ):
                     return "Verify: Can you substitute 'он/она/оно' (he/she/it) as the subject performing this action right now?"
-                elif "1st person plural" in description_lower or "мы" in description_lower:
+                elif (
+                    "1st person plural" in description_lower
+                    or "мы" in description_lower
+                ):
                     return "Verify: Can you substitute 'мы' (we) as the subject performing this action right now?"
-                elif "2nd person plural" in description_lower or "вы" in description_lower:
+                elif (
+                    "2nd person plural" in description_lower
+                    or "вы" in description_lower
+                ):
                     return "Verify: Can you substitute 'вы' (you plural/formal) as the subject performing this action right now?"
-                elif "3rd person plural" in description_lower or "они" in description_lower:
+                elif (
+                    "3rd person plural" in description_lower
+                    or "они" in description_lower
+                ):
                     return "Verify: Can you substitute 'они' (they) as the subject performing this action right now?"
                 else:
                     return "Verify: Is this action happening right now (present tense)?"
@@ -164,7 +196,7 @@ Example format: "Я читаю интересную книгу в библиот
                 return "Verify: Will this action happen in the future?"
             elif "imperative" in description_lower:
                 return "Verify: Is this a command or request? Can you imagine saying 'Please...' before it?"
-        
+
         # Handle adjective forms
         elif word_type == "adjective":
             if "masculine" in description_lower and "nominative" in description_lower:
@@ -177,14 +209,14 @@ Example format: "Я читаю интересную книгу в библиот
                 return "Verify: Does this adjective describe plural nouns in nominative case? Ask 'Какие?' (what kind of - plural)."
             else:
                 return "Verify: Does this adjective agree in gender, number, and case with the noun it describes?"
-        
+
         # Handle pronoun forms
         elif word_type == "pronoun":
             return "Verify: Does this pronoun function correctly in its grammatical role (subject, object, possessive, etc.)?"
-        
-        # Handle number forms  
+
+        # Handle number forms
         elif word_type == "number":
             return "Verify: Does this number agree properly with the noun it modifies, and are they in the correct case relationship?"
-        
+
         # Default guidance
         return f"Verify: Is '{case_or_form_description}' the correct grammatical function of this word in your sentence?"

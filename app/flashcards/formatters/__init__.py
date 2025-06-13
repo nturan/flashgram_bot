@@ -3,4 +3,4 @@
 from .question_formatter import QuestionFormatter
 from .keyboard_builder import KeyboardBuilder
 
-__all__ = ['QuestionFormatter', 'KeyboardBuilder']
+__all__ = ["QuestionFormatter", "KeyboardBuilder"]

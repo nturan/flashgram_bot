@@ -8,7 +8,7 @@ from .models import (
     FlashcardType,
     DifficultyLevel,
     FlashcardUnion,
-    create_flashcard_from_dict
+    create_flashcard_from_dict,
 )
 from .database import FlashcardDatabaseV2, flashcard_db_v2
 from .service import FlashcardService, flashcard_service
@@ -16,7 +16,7 @@ from .service import FlashcardService, flashcard_service
 __all__ = [
     # Models
     "BaseFlashcard",
-    "TwoSidedCard", 
+    "TwoSidedCard",
     "FillInTheBlank",
     "MultipleChoice",
     "FlashcardType",
@@ -28,5 +28,5 @@ __all__ = [
     "flashcard_db_v2",
     # Service
     "FlashcardService",
-    "flashcard_service"
+    "flashcard_service",
 ]

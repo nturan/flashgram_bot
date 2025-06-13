@@ -3,4 +3,4 @@
 from .answer_validator import AnswerValidator
 from .input_parser import InputParser
 
-__all__ = ['AnswerValidator', 'InputParser']
+__all__ = ["AnswerValidator", "InputParser"]
