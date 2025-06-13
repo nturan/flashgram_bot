@@ -107,7 +107,8 @@ The bot now uses a **conversational chatbot as the primary interaction method**:
 
 **Testing:**
 - **CRITICAL**: Always run tests after making any code changes: `python -m pytest tests/ -v`
-- Current test count: 85 tests covering models, generation, database, FastAPI, Telegram bot, and MongoDB
+- Tests cover models, generation, database, FastAPI, Telegram bot, MongoDB, and import integrity
+- Import integrity tests prevent missing import errors that could cause runtime failures
 - All tests must pass before considering changes complete
 - Run tests frequently during development to catch issues early
 

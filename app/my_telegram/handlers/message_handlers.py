@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from app.my_telegram.session import session_manager
 from app.flashcards.models import WordType
 from app.flashcards import flashcard_service
+from app.common.telegram_utils import safe_send_markdown
 
 logger = logging.getLogger(__name__)
 
