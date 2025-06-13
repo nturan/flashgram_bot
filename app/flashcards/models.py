@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Literal, Union, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -46,8 +46,7 @@ class BaseFlashcard(BaseModel):
     times_correct: int = Field(default=0, description="Number of times answered correctly")
     times_incorrect: int = Field(default=0, description="Number of times answered incorrectly")
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 class TwoSidedCard(BaseFlashcard):
     """Traditional flashcard with a front and back side."""
@@ -171,5 +170,4 @@ class DictionaryWord(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, description="When the record was created")
     updated_at: datetime = Field(default_factory=datetime.now, description="When the record was last updated")
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
