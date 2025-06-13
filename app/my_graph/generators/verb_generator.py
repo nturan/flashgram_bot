@@ -99,17 +99,23 @@ class VerbGenerator(BaseGenerator):
         return flashcards
     
     def _generate_conjugation_flashcards(self, verb: Verb, dictionary_form: str) -> List[Any]:
-        """Generate flashcards for verb conjugation type."""
+        """Generate flashcards for verb conjugation patterns."""
         flashcards = []
         
-        # Generate conjugation flashcard (keep as two-sided)
-        flashcard = self.create_two_sided_card(
-            front=f"What conjugation type is '{dictionary_form}'?",
-            back=verb.conjugation,
-            tags=["russian", "verb", "conjugation", "grammar"],
-            title=f"{dictionary_form} - conjugation"
-        )
-        flashcards.append(flashcard)
+        # Since conjugation property was removed, we can generate pattern-based flashcards
+        # based on the present tense forms if available
+        if verb.present_first_singular and verb.present_second_singular:
+            # Create a conjugation pattern flashcard based on present forms
+            first_person = verb.present_first_singular
+            second_person = verb.present_second_singular
+            
+            flashcard = self.create_two_sided_card(
+                front=f"What are the я and ты forms of '{dictionary_form}' in present tense?",
+                back=f"я {first_person}, ты {second_person}",
+                tags=["russian", "verb", "present", "conjugation"],
+                title=f"{dictionary_form} - present tense pattern"
+            )
+            flashcards.append(flashcard)
         
         return flashcards
     

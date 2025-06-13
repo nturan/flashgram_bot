@@ -304,13 +304,11 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             success = config_manager.update_setting(user_id, setting_name, value)
             
             if success:
-                # If model was updated, reinitialize both systems
+                # If model was updated, reinitialize systems
                 if setting_name == "model":
-                    from .message_handlers import reinit_tutor_with_model
                     from app.my_graph.sentence_generation.llm_sentence_generator import reinit_sentence_generator_llm
                     from .chatbot_handlers import reinit_chatbot_with_model
                     
-                    reinit_tutor_with_model(value)
                     reinit_sentence_generator_llm(value)
                     reinit_chatbot_with_model(value)
                 

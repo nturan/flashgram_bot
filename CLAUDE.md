@@ -20,8 +20,7 @@ Flashgram Bot is a Telegram bot for practicing with flashcards using spaced repe
       - `learning_handlers.py`: Flashcard learning session management
     - `session/`: Session and configuration management
   - `my_graph/`: AI language processing
-    - `chatbot_tutor.py`: Main conversational Russian tutor with LangGraph tools
-    - `language_tutor.py`: Legacy grammar analysis (used by chatbot tools)
+    - `chatbot_tutor.py`: Main conversational Russian tutor with self-contained grammar analysis tools
     - `flashcard_generator.py`: Flashcard generation from grammar analysis
     - `sentence_generation/`: LLM-powered sentence generation
     - `generators/`: Word-type specific flashcard generators
@@ -96,6 +95,8 @@ The bot now uses a **conversational chatbot as the primary interaction method**:
 - Cleaned up unused legacy Russian tutor routing code
 - Removed unused `/api/analyze/{word}` FastAPI endpoint
 - Streamlined bot initialization to focus on chatbot system
+- **LATEST**: Eliminated legacy `RussianTutor` class completely - grammar analysis now self-contained in `chatbot_tutor.py`
+- Removed `language_tutor.py` file and all dependencies on legacy LangGraph agent
 
 ### Development Notes
 

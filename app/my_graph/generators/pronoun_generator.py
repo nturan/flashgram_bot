@@ -18,15 +18,18 @@ class PronounGenerator(BaseGenerator):
         flashcards = []
         dictionary_form = pronoun.dictionary_form
         
-        # Generate flashcards based on declension pattern
-        if pronoun.declension_pattern == "noun_like":
+        # Determine declension pattern based on available fields
+        if pronoun.singular is not None or pronoun.plural is not None:
+            # Has noun-like declension (personal pronouns)
             flashcards.extend(self._generate_noun_like_forms(pronoun, dictionary_form))
-        elif pronoun.declension_pattern == "adjective_like":
+        elif pronoun.masculine is not None or pronoun.feminine is not None or pronoun.neuter is not None:
+            # Has adjective-like declension (demonstrative, possessive pronouns)
             flashcards.extend(self._generate_adjective_like_forms(pronoun, dictionary_form))
-        else:  # special
+        else:
+            # Special/irregular declension
             flashcards.extend(self._generate_special_forms(pronoun, dictionary_form))
         
-        # Generate pronoun type and property flashcards
+        # Generate basic property flashcards
         flashcards.extend(self._generate_property_flashcards(pronoun, dictionary_form))
         
         return flashcards
@@ -39,17 +42,7 @@ class PronounGenerator(BaseGenerator):
         if pronoun.singular:
             for case, form in pronoun.singular.items():
                 if self.should_create_flashcard(form, dictionary_form):
-                    # Create descriptive form name
-                    person_desc = f"{pronoun.person} person" if pronoun.person else ""
-                    gender_desc = f"{pronoun.gender}" if pronoun.gender else ""
-                    
-                    if person_desc and gender_desc:
-                        form_description = f"{case.upper()} ({person_desc}, {gender_desc})"
-                    elif person_desc:
-                        form_description = f"{case.upper()} ({person_desc})"
-                    else:
-                        form_description = f"{case.upper()} singular"
-                    
+                    form_description = f"{case.upper()} singular"
                     grammatical_key = f"{case.upper()} case"
                     flashcard = self.create_fill_in_gap_card(
                         dictionary_form=dictionary_form,
@@ -65,9 +58,7 @@ class PronounGenerator(BaseGenerator):
         if pronoun.plural:
             for case, form in pronoun.plural.items():
                 if self.should_create_flashcard(form, dictionary_form):
-                    person_desc = f"{pronoun.person} person" if pronoun.person else ""
-                    form_description = f"{case.upper()} ({person_desc})" if person_desc else f"{case.upper()} plural"
-                    
+                    form_description = f"{case.upper()} plural"
                     grammatical_key = f"{case.upper()} case"
                     flashcard = self.create_fill_in_gap_card(
                         dictionary_form=dictionary_form,
@@ -96,7 +87,7 @@ class PronounGenerator(BaseGenerator):
                         target_form=form,
                         form_description=form_description,
                         word_type="pronoun",
-                        tags=["russian", "pronoun", pronoun.pronoun_type, case, "masculine"],
+                        tags=["russian", "pronoun", "demonstrative", case, "masculine"],
                         grammatical_key=grammatical_key
                     )
                     flashcards.append(flashcard)
@@ -112,7 +103,7 @@ class PronounGenerator(BaseGenerator):
                         target_form=form,
                         form_description=form_description,
                         word_type="pronoun",
-                        tags=["russian", "pronoun", pronoun.pronoun_type, case, "feminine"],
+                        tags=["russian", "pronoun", "demonstrative", case, "feminine"],
                         grammatical_key=grammatical_key
                     )
                     flashcards.append(flashcard)
@@ -128,7 +119,7 @@ class PronounGenerator(BaseGenerator):
                         target_form=form,
                         form_description=form_description,
                         word_type="pronoun",
-                        tags=["russian", "pronoun", pronoun.pronoun_type, case, "neuter"],
+                        tags=["russian", "pronoun", "demonstrative", case, "neuter"],
                         grammatical_key=grammatical_key
                     )
                     flashcards.append(flashcard)
@@ -144,7 +135,7 @@ class PronounGenerator(BaseGenerator):
                         target_form=form,
                         form_description=form_description,
                         word_type="pronoun",
-                        tags=["russian", "pronoun", pronoun.pronoun_type, case, "plural"],
+                        tags=["russian", "pronoun", "demonstrative", case, "plural"],
                         grammatical_key=grammatical_key
                     )
                     flashcards.append(flashcard)
@@ -169,7 +160,7 @@ class PronounGenerator(BaseGenerator):
             flashcard = self.create_two_sided_card(
                 front=f"What is the English meaning of '{dictionary_form}'?",
                 back=pronoun.english_translation,
-                tags=["russian", "pronoun", pronoun.pronoun_type, "translation"],
+                tags=["russian", "pronoun", "special", "translation"],
                 title=f"{dictionary_form} - meaning"
             )
             flashcards.append(flashcard)
@@ -180,15 +171,6 @@ class PronounGenerator(BaseGenerator):
         """Generate flashcards for pronoun properties and characteristics."""
         flashcards = []
         
-        # Pronoun type flashcard
-        flashcard = self.create_two_sided_card(
-            front=f"What type of pronoun is '{dictionary_form}'?",
-            back=pronoun.pronoun_type.title(),
-            tags=["russian", "pronoun", "type", "grammar"],
-            title=f"{dictionary_form} - pronoun type"
-        )
-        flashcards.append(flashcard)
-        
         # Translation flashcard
         flashcard = self.create_two_sided_card(
             front=f"What does '{dictionary_form}' mean in English?",
@@ -198,38 +180,13 @@ class PronounGenerator(BaseGenerator):
         )
         flashcards.append(flashcard)
         
-        # Declension pattern flashcard
-        pattern_descriptions = {
-            "noun_like": "Declines like a noun (personal pronouns)",
-            "adjective_like": "Declines like an adjective (demonstrative, possessive pronouns)",
-            "special": "Has a special/irregular declension pattern"
-        }
-        
-        flashcard = self.create_two_sided_card(
-            front=f"How does '{dictionary_form}' decline?",
-            back=pattern_descriptions.get(pronoun.declension_pattern, pronoun.declension_pattern),
-            tags=["russian", "pronoun", "declension", "grammar"],
-            title=f"{dictionary_form} - declension pattern"
-        )
-        flashcards.append(flashcard)
-        
-        # Person and number for personal pronouns
-        if pronoun.person and pronoun.number:
+        # Add notes flashcard if available
+        if pronoun.notes and pronoun.notes.strip():
             flashcard = self.create_two_sided_card(
-                front=f"What person and number is '{dictionary_form}'?",
-                back=f"{pronoun.person.title()} person, {pronoun.number}",
-                tags=["russian", "pronoun", "personal", "grammar"],
-                title=f"{dictionary_form} - person and number"
-            )
-            flashcards.append(flashcard)
-        
-        # Gender for pronouns that have it
-        if pronoun.gender:
-            flashcard = self.create_two_sided_card(
-                front=f"What gender is '{dictionary_form}'?",
-                back=pronoun.gender.title(),
-                tags=["russian", "pronoun", "gender", "grammar"],
-                title=f"{dictionary_form} - gender"
+                front=f"What are the special notes for '{dictionary_form}'?",
+                back=pronoun.notes,
+                tags=["russian", "pronoun", "notes", "grammar"],
+                title=f"{dictionary_form} - special notes"
             )
             flashcards.append(flashcard)
         

@@ -86,7 +86,7 @@ async def process_chatbot_conversation(update: Update, context: ContextTypes.DEF
         conversation_history = session.get_conversation_history()
         
         # Process message through chatbot
-        result = chatbot_tutor.chat(user_text, conversation_history)
+        result = chatbot_tutor.chat(user_text, conversation_history, user_id)
         
         if result.get("success"):
             response = result.get("response", "I'm not sure how to respond to that.")
