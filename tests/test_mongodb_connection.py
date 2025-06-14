@@ -133,8 +133,8 @@ class TestMongoDBConnection:
         mock_db = MagicMock()
         mock_collection = MagicMock()
         mock_instance.__getitem__.return_value = mock_db
-        mock_db.dev = mock_collection
-        mock_db.dictionary_words = mock_collection
+        mock_db.cards = mock_collection
+        mock_db.words = mock_collection
 
         mock_client.return_value = mock_instance
 

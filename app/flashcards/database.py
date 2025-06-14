@@ -51,9 +51,9 @@ class FlashcardDatabaseV2:
 
             # Get database and collection
             self.db = self.client[settings.mongodb_database]
-            self.collection = self.db.dev  # New collection for v2 flashcards
+            self.collection = self.db.cards  # Collection for flashcards
             self.dictionary_words_collection = (
-                self.db.dictionary_words
+                self.db.words
             )  # Collection for processed words
 
             logger.info(
