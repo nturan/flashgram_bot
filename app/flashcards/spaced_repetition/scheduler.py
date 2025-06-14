@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
-from app.flashcards.models import FlashcardUnion, DifficultyLevel
+from app.models.flashcards import FlashcardUnion, DifficultyLevel
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app.my_graph.generators.noun_generator import NounGenerator
 from app.grammar.russian import Noun
-from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
+from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestNounGenerator:

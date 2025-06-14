@@ -1,6 +1,6 @@
 # Flashcard models and utilities
 
-from .models import (
+from app.models.flashcards import (
     BaseFlashcard,
     TwoSidedCard,
     FillInTheBlank,

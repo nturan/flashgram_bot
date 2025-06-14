@@ -11,7 +11,8 @@ class TestFlashcardGenerationSimple:
 
     def test_generate_flashcards_from_analysis_success(self):
         """Test successful flashcard generation."""
-        from app.flashcards.models import TwoSidedCard, WordType
+        from app.models.flashcards import TwoSidedCard
+        from app.models.words import WordType
         
         # Mock the dependencies with valid data
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \

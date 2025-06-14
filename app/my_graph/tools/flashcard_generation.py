@@ -12,7 +12,7 @@ from app.grammar.russian import (
 )
 from app.my_graph.flashcard_generator import flashcard_generator
 from app.flashcards import flashcard_service
-from app.flashcards.models import WordType
+from app.models.words import WordType
 
 logger = logging.getLogger(__name__)
 

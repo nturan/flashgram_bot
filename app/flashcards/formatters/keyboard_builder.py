@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional, Any
-from app.flashcards.models import FlashcardUnion, MultipleChoice
+from app.models.flashcards import FlashcardUnion, MultipleChoice
 from app.common.telegram_utils import (
     create_edit_delete_keyboard,
     create_multiple_choice_keyboard,

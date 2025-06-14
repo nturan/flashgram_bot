@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from app.flashcards.database import FlashcardDatabaseV2
-from app.flashcards.models import TwoSidedCard, FlashcardType, DifficultyLevel
+from app.models.flashcards import TwoSidedCard, FlashcardType, DifficultyLevel
 
 
 class TestMongoDBConnection:

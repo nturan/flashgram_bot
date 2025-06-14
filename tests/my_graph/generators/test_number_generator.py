@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app.my_graph.generators.number_generator import NumberGenerator
 from app.grammar.russian import Number
-from app.flashcards.models import FillInTheBlank, TwoSidedCard
+from app.models.flashcards import FillInTheBlank, TwoSidedCard
 
 
 class TestNumberGenerator:

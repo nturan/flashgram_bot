@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from app.my_graph.generators.base_generator import BaseGenerator
-from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
+from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestBaseGenerator:

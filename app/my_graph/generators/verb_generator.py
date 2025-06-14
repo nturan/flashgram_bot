@@ -3,7 +3,7 @@
 import logging
 from typing import List, Any, Dict
 from app.grammar.russian import Verb
-from app.flashcards.models import MultipleChoice
+from app.models.flashcards import MultipleChoice
 from .base_generator import BaseGenerator
 
 logger = logging.getLogger(__name__)

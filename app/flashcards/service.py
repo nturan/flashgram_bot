@@ -4,7 +4,7 @@ import logging
 import random
 from typing import List, Optional, Tuple, Dict, Any
 
-from app.flashcards.models import FlashcardUnion, FlashcardType
+from app.models.flashcards import FlashcardUnion, FlashcardType
 from app.flashcards.database import flashcard_db_v2
 from app.flashcards.validators import AnswerValidator
 from app.flashcards.formatters import QuestionFormatter

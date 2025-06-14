@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Tuple
-from app.flashcards.models import FlashcardUnion
+from app.models.flashcards import FlashcardUnion
 
 logger = logging.getLogger(__name__)
 

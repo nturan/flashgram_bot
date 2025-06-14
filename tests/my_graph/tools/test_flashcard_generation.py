@@ -5,7 +5,8 @@ from unittest.mock import Mock, patch, MagicMock
 
 from app.my_graph.tools.flashcard_generation import generate_flashcards_from_analysis_impl
 from app.grammar.russian import Noun, Adjective, Verb, Pronoun, Number
-from app.flashcards.models import TwoSidedCard, WordType, DifficultyLevel
+from app.models.flashcards import TwoSidedCard, DifficultyLevel
+from app.models.words import WordType
 
 
 class TestFlashcardGeneration:

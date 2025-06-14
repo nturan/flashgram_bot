@@ -2,7 +2,7 @@
 
 import logging
 from typing import Tuple, Optional, Any
-from app.flashcards.models import (
+from app.models.flashcards import (
     FlashcardUnion,
     TwoSidedCard,
     FillInTheBlank,

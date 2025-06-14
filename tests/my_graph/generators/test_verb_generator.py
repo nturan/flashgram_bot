@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app.my_graph.generators.verb_generator import VerbGenerator
 from app.grammar.russian import Verb
-from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
+from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestVerbGenerator:

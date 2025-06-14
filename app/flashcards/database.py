@@ -6,16 +6,15 @@ from bson import ObjectId
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.flashcards.models import (
+from app.models.flashcards import (
     FlashcardUnion,
     FlashcardType,
     TwoSidedCard,
     FillInTheBlank,
     MultipleChoice,
     create_flashcard_from_dict,
-    DictionaryWord,
-    WordType,
 )
+from app.models.words import Word, WordType
 
 logger = logging.getLogger(__name__)
 
@@ -400,7 +399,7 @@ class FlashcardDatabaseV2:
     ) -> Optional[str]:
         """Add a new processed word to the dictionary."""
         try:
-            dictionary_word = DictionaryWord(
+            dictionary_word = Word(
                 user_id=user_id,
                 dictionary_form=dictionary_form.lower().strip(),
                 word_type=word_type,
@@ -430,7 +429,7 @@ class FlashcardDatabaseV2:
 
     def get_processed_word(
         self, user_id: int, dictionary_form: str, word_type: WordType
-    ) -> Optional[DictionaryWord]:
+    ) -> Optional[Word]:
         """Get a processed word by dictionary form and type."""
         try:
             doc = self.dictionary_words_collection.find_one(
@@ -444,7 +443,7 @@ class FlashcardDatabaseV2:
             if doc:
                 doc["id"] = str(doc["_id"])
                 del doc["_id"]
-                return DictionaryWord(**doc)
+                return Word(**doc)
 
             return None
 
@@ -488,7 +487,7 @@ class FlashcardDatabaseV2:
 
     def get_processed_words_by_type(
         self, user_id: int, word_type: Optional[WordType] = None, limit: Optional[int] = None
-    ) -> List[DictionaryWord]:
+    ) -> List[Word]:
         """Get processed words, optionally filtered by type."""
         try:
             query_filter = {"user_id": user_id}
@@ -507,7 +506,7 @@ class FlashcardDatabaseV2:
                 try:
                     doc["id"] = str(doc["_id"])
                     del doc["_id"]
-                    words.append(DictionaryWord(**doc))
+                    words.append(Word(**doc))
                 except Exception as e:
                     logger.warning(f"Failed to parse processed word document: {e}")
                     continue

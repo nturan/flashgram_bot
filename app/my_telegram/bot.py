@@ -87,7 +87,7 @@ async def handle_callback_query(
                     # Verify this is the correct flashcard
                     if str(current_flashcard.id) == flashcard_id:
                         # Check the answer
-                        from app.flashcards.models import MultipleChoice
+                        from app.models.flashcards import MultipleChoice
 
                         if isinstance(current_flashcard, MultipleChoice):
                             is_correct = (

@@ -1,4 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
+"""Flashcard models using Beanie documents for MongoDB integration."""
+
+from beanie import Document
+from pydantic import Field
 from typing import List, Optional, Literal, Union, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -6,7 +9,6 @@ from enum import Enum
 
 class FlashcardType(str, Enum):
     """Enum for different flashcard types."""
-
     TWO_SIDED = "two_sided"
     FILL_IN_BLANK = "fill_in_blank"
     MULTIPLE_CHOICE = "multiple_choice"
@@ -14,7 +16,6 @@ class FlashcardType(str, Enum):
 
 class DifficultyLevel(str, Enum):
     """Enum for difficulty levels used in spaced repetition."""
-
     VERY_EASY = "very_easy"
     EASY = "easy"
     MEDIUM = "medium"
@@ -22,11 +23,10 @@ class DifficultyLevel(str, Enum):
     VERY_HARD = "very_hard"
 
 
-class BaseFlashcard(BaseModel):
+class BaseFlashcard(Document):
     """Base flashcard model with common fields for all flashcard types."""
 
     # Identification
-    id: Optional[str] = Field(None, description="Unique identifier (MongoDB ObjectId)")
     user_id: int = Field(..., description="Telegram user ID who owns this flashcard")
 
     # Type and content
@@ -72,7 +72,8 @@ class BaseFlashcard(BaseModel):
         default=0, description="Number of times answered incorrectly"
     )
 
-    model_config = ConfigDict(use_enum_values=True)
+    class Settings:
+        name = "flashcards"
 
 
 class TwoSidedCard(BaseFlashcard):
@@ -171,54 +172,3 @@ def create_flashcard_from_dict(data: dict) -> FlashcardUnion:
         return MultipleChoice(**data)
     else:
         raise ValueError(f"Unknown flashcard type: {flashcard_type}")
-
-
-class WordType(str, Enum):
-    """Enum for different word types that can be processed."""
-
-    NOUN = "noun"
-    ADJECTIVE = "adjective"
-    VERB = "verb"
-    ADVERB = "adverb"
-    PRONOUN = "pronoun"
-    PREPOSITION = "preposition"
-    CONJUNCTION = "conjunction"
-    PARTICLE = "particle"
-    UNKNOWN = "unknown"
-
-
-class DictionaryWord(BaseModel):
-    """Model for tracking processed dictionary words to avoid regeneration."""
-
-    # Identification
-    id: Optional[str] = Field(None, description="Unique identifier (MongoDB ObjectId)")
-    user_id: int = Field(..., description="Telegram user ID who processed this word")
-
-    # Word data
-    dictionary_form: str = Field(..., description="The dictionary form of the word")
-    word_type: WordType = Field(
-        ..., description="Type of word (noun, verb, adjective, etc.)"
-    )
-
-    # Processing metadata
-    processed_date: datetime = Field(
-        default_factory=datetime.now, description="When this word was processed"
-    )
-    flashcards_generated: int = Field(
-        default=0, description="Number of flashcards generated for this word"
-    )
-
-    # Analysis metadata (optional - can store grammar analysis results)
-    grammar_data: Optional[Dict[str, Any]] = Field(
-        default_factory=dict, description="Cached grammar analysis data"
-    )
-
-    # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="When the record was created"
-    )
-    updated_at: datetime = Field(
-        default_factory=datetime.now, description="When the record was last updated"
-    )
-
-    model_config = ConfigDict(use_enum_values=True)

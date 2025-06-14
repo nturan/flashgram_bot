@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Any
-from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
+from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
 from app.my_graph.sentence_generation import LLMSentenceGenerator, TextProcessor
 from app.my_graph.utils import SuffixExtractor, FormAnalyzer
 
