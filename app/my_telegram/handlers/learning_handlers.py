@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from app.flashcards import flashcard_service, TwoSidedCard, FillInTheBlank
-from app.my_telegram.session import session_manager
+from app.my_telegram.session import session_manager, config_manager
 from app.common.telegram_utils import safe_send_markdown
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,11 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.chat.send_action(action="typing")
 
     try:
+        # Get user's cards per session setting
+        cards_per_session = config_manager.get_setting(user_id, "cards_per_session") or 20
+        
         # Get flashcards for learning session
-        flashcards = flashcard_service.get_learning_session_flashcards(limit=20)
+        flashcards = flashcard_service.get_learning_session_flashcards(limit=cards_per_session)
 
         if not flashcards:
             await update.message.reply_text(

@@ -16,10 +16,15 @@ class UserConfig:
     # Available settings
     model: str = "gpt-4o"  # Default model
     confirm_flashcards: bool = False  # Default flashcard confirmation setting
+    cards_per_session: int = 20  # Default number of cards per learning session
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
-        return {"model": self.model, "confirm_flashcards": self.confirm_flashcards}
+        return {
+            "model": self.model,
+            "confirm_flashcards": self.confirm_flashcards,
+            "cards_per_session": self.cards_per_session,
+        }
 
     def update_setting(self, setting_name: str, value: Any) -> bool:
         """Update a specific setting.
@@ -47,6 +52,18 @@ class UserConfig:
                 elif value.lower() in ["false", "no", "0", "off"]:
                     self.confirm_flashcards = False
                     return True
+        elif setting_name == "cards_per_session":
+            if isinstance(value, int) and 1 <= value <= 10000:
+                self.cards_per_session = value
+                return True
+            elif isinstance(value, str):
+                try:
+                    int_value = int(value)
+                    if 1 <= int_value <= 100:
+                        self.cards_per_session = int_value
+                        return True
+                except ValueError:
+                    pass
 
         return False
 
@@ -63,6 +80,8 @@ class UserConfig:
             return self.model
         elif setting_name == "confirm_flashcards":
             return self.confirm_flashcards
+        elif setting_name == "cards_per_session":
+            return self.cards_per_session
         return None
 
 
@@ -145,6 +164,7 @@ class ConfigManager:
         return {
             "model": "LLM model name (e.g., gpt-4o, gpt-4o-mini)",
             "confirm_flashcards": "Whether to ask for confirmation before creating flashcards (true/false)",
+            "cards_per_session": "Number of flashcards per learning session (1-100, default: 20)",
         }
 
 
