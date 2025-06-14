@@ -14,7 +14,7 @@ class UserConfig:
     user_id: int
 
     # Available settings
-    model: str = "gpt-4o-mini"  # Default model
+    model: str = "gpt-4o"  # Default model
     confirm_flashcards: bool = False  # Default flashcard confirmation setting
 
     def to_dict(self) -> Dict[str, Any]:
@@ -143,7 +143,7 @@ class ConfigManager:
             Dictionary mapping setting names to descriptions
         """
         return {
-            "model": "LLM model name (e.g., gpt-4o-mini, gpt-4o)",
+            "model": "LLM model name (e.g., gpt-4o, gpt-4o-mini)",
             "confirm_flashcards": "Whether to ask for confirmation before creating flashcards (true/false)",
         }
 
