@@ -173,3 +173,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 /examples/
+dictionaries/ru_RU_utf8.aff:Zone.Identifier
+dictionaries/ru_RU_utf8.dic:Zone.Identifier
