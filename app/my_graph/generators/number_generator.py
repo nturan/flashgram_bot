@@ -23,21 +23,21 @@ class NumberGenerator(BaseGenerator):
         flashcards = []
         dictionary_form = number.dictionary_form
 
-        # Generate flashcards based on number category
-        if number.number_category == "one":
+        # Generate flashcards based on available forms
+        if number.masculine or number.feminine or number.neuter:
+            # Has gender forms like "один" - generate one-type forms
             flashcards.extend(self._generate_one_type_forms(number, dictionary_form))
-        elif number.number_category in [
-            "two_three_four",
-            "five_twenty",
-            "tens",
-            "hundreds",
-        ]:
-            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form))
-        elif number.number_category == "thousands":
-            flashcards.extend(self._generate_thousands_forms(number, dictionary_form))
-        elif number.number_category == "compound":
+        elif number.compound_forms:
+            # Has compound forms - generate compound forms
             flashcards.extend(self._generate_compound_forms(number, dictionary_form))
-        else:  # special
+        elif number.singular and number.plural:
+            # Has both singular and plural - generate thousands forms
+            flashcards.extend(self._generate_thousands_forms(number, dictionary_form))
+        elif number.singular:
+            # Has only singular - generate simple case forms
+            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form))
+        else:
+            # Special/irregular - generate special forms
             flashcards.extend(self._generate_special_forms(number, dictionary_form))
 
         # Generate number property and usage flashcards
@@ -110,22 +110,14 @@ class NumberGenerator(BaseGenerator):
         if number.singular:
             for case, form in number.singular.items():
                 if self.should_create_flashcard(form, dictionary_form):
-                    # Create descriptive form name based on category
-                    category_desc = {
-                        "two_three_four": "2-4 pattern",
-                        "five_twenty": "5-20 pattern",
-                        "tens": "tens",
-                        "hundreds": "hundreds",
-                    }.get(number.number_category, "")
-
-                    form_description = f"{case.upper()} ({category_desc})"
+                    form_description = f"{case.upper()} case"
                     grammatical_key = f"{case.upper()} case"
                     flashcard = self.create_fill_in_gap_card(
                         dictionary_form=dictionary_form,
                         target_form=form,
                         form_description=form_description,
                         word_type="number",
-                        tags=["russian", "number", number.number_category, case],
+                        tags=["russian", "number", "simple_case", case],
                         grammatical_key=grammatical_key,
                     )
                     flashcards.append(flashcard)
@@ -224,58 +216,12 @@ class NumberGenerator(BaseGenerator):
         """Generate flashcards for number properties and usage patterns."""
         flashcards = []
 
-        # Number value flashcard
-        flashcard = self.create_two_sided_card(
-            front=f"What is the numeric value of '{dictionary_form}'?",
-            back=str(number.numeric_value),
-            tags=["russian", "number", "value"],
-            title=f"{dictionary_form} - numeric value",
-        )
-        flashcards.append(flashcard)
-
         # Translation flashcard
         flashcard = self.create_two_sided_card(
             front=f"What does '{dictionary_form}' mean in English?",
             back=number.english_translation,
             tags=["russian", "number", "translation"],
             title=f"{dictionary_form} - translation",
-        )
-        flashcards.append(flashcard)
-
-        # Number type flashcard
-        type_descriptions = {
-            "cardinal": "Cardinal number (один, два, три...)",
-            "ordinal": "Ordinal number (первый, второй, третий...)",
-            "collective": "Collective number (двое, трое, четверо...)",
-        }
-
-        flashcard = self.create_two_sided_card(
-            front=f"What type of number is '{dictionary_form}'?",
-            back=type_descriptions.get(number.number_type, number.number_type),
-            tags=["russian", "number", "type", "grammar"],
-            title=f"{dictionary_form} - number type",
-        )
-        flashcards.append(flashcard)
-
-        # Number category flashcard
-        category_descriptions = {
-            "one": "Special pattern like adjectives (один/одна/одно)",
-            "two_three_four": "Special pattern for 2-4 (два, три, четыре)",
-            "five_twenty": "Pattern like feminine nouns in -ь (пять-двадцать)",
-            "tens": "Tens pattern (тридцать, сорок, пятьдесят...)",
-            "hundreds": "Hundreds pattern (сто, двести, триста...)",
-            "thousands": "Large numbers (тысяча, миллион...)",
-            "compound": "Compound numbers (двадцать один...)",
-            "special": "Irregular declension pattern",
-        }
-
-        flashcard = self.create_two_sided_card(
-            front=f"What declension category is '{dictionary_form}'?",
-            back=category_descriptions.get(
-                number.number_category, number.number_category
-            ),
-            tags=["russian", "number", "category", "grammar"],
-            title=f"{dictionary_form} - declension category",
         )
         flashcards.append(flashcard)
 
@@ -292,16 +238,6 @@ class NumberGenerator(BaseGenerator):
                 back=agreement_text,
                 tags=["russian", "number", "agreement", "grammar"],
                 title=f"{dictionary_form} - noun agreement",
-            )
-            flashcards.append(flashcard)
-
-        # Usage notes flashcard
-        if number.usage_notes:
-            flashcard = self.create_two_sided_card(
-                front=f"What are the special usage notes for '{dictionary_form}'?",
-                back=number.usage_notes,
-                tags=["russian", "number", "usage", "grammar"],
-                title=f"{dictionary_form} - usage notes",
             )
             flashcards.append(flashcard)
 
