@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app.my_graph.generators.noun_generator import NounGenerator
 from app.grammar.russian import Noun
-from app.flashcards.models import FillInTheBlank, TwoSidedCard
+from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestNounGenerator:
@@ -54,10 +54,10 @@ class TestNounGenerator:
         """Test basic flashcard generation for noun."""
         with patch.object(self.generator, 'should_create_flashcard', return_value=True), \
              patch.object(self.generator, 'create_fill_in_gap_card') as mock_create_gap, \
-             patch.object(self.generator, 'create_two_sided_card') as mock_create_two:
+             patch.object(self.generator, 'create_multiple_choice_card') as mock_create_mc:
             
             mock_create_gap.return_value = Mock(spec=FillInTheBlank)
-            mock_create_two.return_value = Mock(spec=TwoSidedCard)
+            mock_create_mc.return_value = Mock(spec=MultipleChoice)
             
             flashcards = self.generator.generate_flashcards_from_grammar(sample_noun)
             
@@ -65,8 +65,8 @@ class TestNounGenerator:
             assert len(flashcards) > 0
             # Check calls for singular forms (6 cases - nom should be skipped)
             assert mock_create_gap.call_count >= 5  # At least gen, dat, acc, ins, pre for singular
-            # Check calls for property cards (gender + animacy)
-            assert mock_create_two.call_count == 2
+            # Check calls for property cards (gender + animacy) - now multiple choice
+            assert mock_create_mc.call_count == 2
 
     def test_generate_flashcards_from_grammar_with_sentences(self, sample_noun, generated_sentences):
         """Test flashcard generation with pre-generated sentences."""
@@ -143,30 +143,39 @@ class TestNounGenerator:
 
     def test_generate_property_flashcards(self, sample_noun):
         """Test generation of property flashcards (gender, animacy)."""
-        with patch.object(self.generator, 'create_two_sided_card') as mock_create_two:
+        with patch.object(self.generator, 'create_multiple_choice_card') as mock_create_mc:
             
-            mock_create_two.return_value = Mock(spec=TwoSidedCard)
+            mock_create_mc.return_value = Mock(spec=MultipleChoice)
             
             flashcards = self.generator._generate_property_flashcards(sample_noun, "дом")
             
             assert len(flashcards) == 2  # Gender and animacy cards
-            assert mock_create_two.call_count == 2
+            assert mock_create_mc.call_count == 2
             
             # Check gender card
-            first_call = mock_create_two.call_args_list[0]
-            gender_front = first_call[1]['front']
-            gender_back = first_call[1]['back']
-            assert "gender" in gender_front.lower()
-            assert "дом" in gender_front
-            assert gender_back == "masculine"
+            first_call = mock_create_mc.call_args_list[0]
+            kwargs = first_call[1] if len(first_call) > 1 else {}
+            gender_question = kwargs.get('question', '')
+            gender_options = kwargs.get('options', [])
+            gender_correct = kwargs.get('correct_indices', [])
+            assert "gender" in gender_question.lower()
+            assert "дом" in gender_question
+            assert "masculine" in gender_options
+            assert "feminine" in gender_options
+            assert "neuter" in gender_options
+            assert 0 in gender_correct  # masculine is first option
             
             # Check animacy card
-            second_call = mock_create_two.call_args_list[1]
-            animacy_front = second_call[1]['front']
-            animacy_back = second_call[1]['back']
-            assert "animate" in animacy_front.lower()
-            assert "дом" in animacy_front
-            assert animacy_back == "inanimate"
+            second_call = mock_create_mc.call_args_list[1]
+            kwargs = second_call[1] if len(second_call) > 1 else {}
+            animacy_question = kwargs.get('question', '')
+            animacy_options = kwargs.get('options', [])
+            animacy_correct = kwargs.get('correct_indices', [])
+            assert "animate" in animacy_question.lower()
+            assert "дом" in animacy_question
+            assert "animate" in animacy_options
+            assert "inanimate" in animacy_options
+            assert 1 in animacy_correct  # inanimate is second option for this noun
 
     def test_generate_property_flashcards_animate_noun(self):
         """Test property flashcards for animate noun."""
@@ -179,25 +188,27 @@ class TestNounGenerator:
             english_translation="cat"
         )
         
-        with patch.object(self.generator, 'create_two_sided_card') as mock_create_two:
+        with patch.object(self.generator, 'create_multiple_choice_card') as mock_create_mc:
             
-            mock_create_two.return_value = Mock(spec=TwoSidedCard)
+            mock_create_mc.return_value = Mock(spec=MultipleChoice)
             
             flashcards = self.generator._generate_property_flashcards(animate_noun, "кот")
             
-            # Check animacy card shows "animate"
-            second_call = mock_create_two.call_args_list[1]
-            animacy_back = second_call[1]['back']
-            assert animacy_back == "animate"
+            # Check animacy card shows "animate" as correct answer
+            second_call = mock_create_mc.call_args_list[1]
+            kwargs = second_call[1] if len(second_call) > 1 else {}
+            animacy_correct = kwargs.get('correct_indices', [])
+            animacy_options = kwargs.get('options', [])
+            assert 0 in animacy_correct  # animate is first option for animate noun
 
     def test_generate_flashcards_empty_sentences_dict(self, sample_noun):
         """Test flashcard generation with empty sentences dictionary."""
         with patch.object(self.generator, 'should_create_flashcard', return_value=True), \
              patch.object(self.generator, 'create_fill_in_gap_card') as mock_create_gap, \
-             patch.object(self.generator, 'create_two_sided_card') as mock_create_two:
+             patch.object(self.generator, 'create_multiple_choice_card') as mock_create_mc:
             
             mock_create_gap.return_value = Mock(spec=FillInTheBlank)
-            mock_create_two.return_value = Mock(spec=TwoSidedCard)
+            mock_create_mc.return_value = Mock(spec=MultipleChoice)
             
             # Test with None sentences
             flashcards1 = self.generator.generate_flashcards_from_grammar(sample_noun, generated_sentences=None)
@@ -211,10 +222,10 @@ class TestNounGenerator:
         """Test flashcard generation with custom word type."""
         with patch.object(self.generator, 'should_create_flashcard', return_value=True), \
              patch.object(self.generator, 'create_fill_in_gap_card') as mock_create_gap, \
-             patch.object(self.generator, 'create_two_sided_card') as mock_create_two:
+             patch.object(self.generator, 'create_multiple_choice_card') as mock_create_mc:
             
             mock_create_gap.return_value = Mock(spec=FillInTheBlank)
-            mock_create_two.return_value = Mock(spec=TwoSidedCard)
+            mock_create_mc.return_value = Mock(spec=MultipleChoice)
             
             flashcards = self.generator.generate_flashcards_from_grammar(
                 sample_noun, word_type="custom_noun"

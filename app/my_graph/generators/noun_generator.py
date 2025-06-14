@@ -94,22 +94,32 @@ class NounGenerator(BaseGenerator):
         """Generate flashcards for noun properties (gender, animacy)."""
         flashcards = []
 
-        # Gender flashcard
-        gender_flashcard = self.create_two_sided_card(
-            front=f"What is the gender of '{dictionary_form}'?",
-            back=noun.gender,
-            tags=["russian", "noun", "gender", "grammar"],
+        # Gender flashcard (multiple choice)
+        gender_options = ["masculine", "feminine", "neuter"]
+        correct_index = gender_options.index(noun.gender)
+        
+        gender_flashcard = self.create_multiple_choice_card(
+            question=f"What is the gender of '{dictionary_form}'?",
+            options=gender_options,
+            correct_indices=[correct_index],
+            tags=["russian", "noun", "gender", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - gender",
+            allow_multiple=False,
         )
         flashcards.append(gender_flashcard)
 
-        # Animacy flashcard
+        # Animacy flashcard (multiple choice)
+        animacy_options = ["animate", "inanimate"]
         animacy_text = "animate" if noun.animacy else "inanimate"
-        animacy_flashcard = self.create_two_sided_card(
-            front=f"Is '{dictionary_form}' animate or inanimate?",
-            back=animacy_text,
-            tags=["russian", "noun", "animacy", "grammar"],
+        correct_index = animacy_options.index(animacy_text)
+        
+        animacy_flashcard = self.create_multiple_choice_card(
+            question=f"Is '{dictionary_form}' animate or inanimate?",
+            options=animacy_options,
+            correct_indices=[correct_index],
+            tags=["russian", "noun", "animacy", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - animacy",
+            allow_multiple=False,
         )
         flashcards.append(animacy_flashcard)
 

@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class UserConfig:
             elif isinstance(value, str):
                 try:
                     int_value = int(value)
-                    if 1 <= int_value <= 100:
+                    if 1 <= int_value <= 10000:
                         self.cards_per_session = int_value
                         return True
                 except ValueError:

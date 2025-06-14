@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from app.my_graph.generators.base_generator import BaseGenerator
-from app.flashcards.models import FillInTheBlank, TwoSidedCard
+from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestBaseGenerator:
@@ -168,3 +168,22 @@ class TestBaseGenerator:
             )
             
             assert card.metadata["grammatical_key"] == "accusative_case"
+
+    def test_create_multiple_choice_card(self):
+        """Test creating multiple choice flashcard."""
+        card = self.generator.create_multiple_choice_card(
+            question="What is the gender of 'дом'?",
+            options=["masculine", "feminine", "neuter"],
+            correct_indices=[0],
+            tags=["russian", "noun", "gender", "multiple_choice"],
+            title="дом - gender",
+            allow_multiple=False
+        )
+        
+        assert isinstance(card, MultipleChoice)
+        assert card.question == "What is the gender of 'дом'?"
+        assert card.options == ["masculine", "feminine", "neuter"]
+        assert card.correct_indices == [0]
+        assert card.allow_multiple is False
+        assert card.tags == ["russian", "noun", "gender", "multiple_choice"]
+        assert card.title == "дом - gender"

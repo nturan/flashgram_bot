@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Any
-from app.flashcards.models import FillInTheBlank, TwoSidedCard
+from app.flashcards.models import FillInTheBlank, TwoSidedCard, MultipleChoice
 from app.my_graph.sentence_generation import LLMSentenceGenerator, TextProcessor
 from app.my_graph.utils import SuffixExtractor, FormAnalyzer
 
@@ -68,6 +68,25 @@ class BaseGenerator:
     ) -> TwoSidedCard:
         """Create a two-sided flashcard."""
         return TwoSidedCard(front=front, back=back, tags=tags, title=title)
+
+    def create_multiple_choice_card(
+        self,
+        question: str,
+        options: List[str],
+        correct_indices: List[int],
+        tags: List[str],
+        title: str,
+        allow_multiple: bool = False,
+    ) -> MultipleChoice:
+        """Create a multiple choice flashcard."""
+        return MultipleChoice(
+            question=question,
+            options=options,
+            correct_indices=correct_indices,
+            allow_multiple=allow_multiple,
+            tags=tags,
+            title=title,
+        )
 
     def should_create_flashcard(self, form: str, dictionary_form: str) -> bool:
         """Determine if a flashcard should be created for this form."""
