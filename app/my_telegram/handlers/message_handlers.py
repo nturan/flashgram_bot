@@ -128,7 +128,7 @@ async def process_flashcard_edit(
         )
 
         # Get the current flashcard to determine type and validate accordingly
-        current_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        current_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
         if not current_flashcard:
             await update.message.reply_text("❌ Error: Flashcard not found.")
             return
@@ -160,7 +160,7 @@ async def process_flashcard_edit(
                 return
 
         # Update the flashcard in database
-        success = flashcard_service.db.update_flashcard(flashcard_id, updated_data)
+        success = flashcard_service.db.update_flashcard(flashcard_id, user_id, updated_data)
 
         if success:
             # Clear editing mode FIRST
@@ -180,7 +180,7 @@ async def process_flashcard_edit(
             if session.learning_mode:
                 # Get the updated flashcard
                 updated_flashcard = flashcard_service.db.get_flashcard_by_id(
-                    flashcard_id
+                    flashcard_id, user_id
                 )
                 if (
                     updated_flashcard

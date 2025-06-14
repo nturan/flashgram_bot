@@ -101,7 +101,7 @@ async def handle_callback_query(
 
                             # Update flashcard in database
                             flashcard_service.update_flashcard_after_review(
-                                current_flashcard, is_correct
+                                user_id, current_flashcard, is_correct
                             )
 
                             # Create feedback message
@@ -260,7 +260,8 @@ async def handle_edit_flashcard(
     """Handle flashcard editing with JSON input."""
     try:
         # Get the flashcard from database
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        user_id = query.from_user.id
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard:
             await query.edit_message_text("❌ Flashcard not found.")
@@ -348,7 +349,8 @@ async def handle_delete_flashcard(
     """Handle flashcard deletion with confirmation."""
     try:
         # Get the flashcard from database
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        user_id = query.from_user.id
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard:
             await query.edit_message_text("❌ Flashcard not found.")
@@ -406,7 +408,7 @@ async def handle_show_answer(
                     answer_text = "Answer not available"
 
                 # Update flashcard as "seen" (neutral review)
-                flashcard_service.update_flashcard_after_review(current_flashcard, True)
+                flashcard_service.update_flashcard_after_review(user_id, current_flashcard, True)
 
                 # Use safe markdown utility to handle the entire message
                 from app.common.telegram_utils import safe_send_markdown
@@ -450,7 +452,8 @@ async def handle_confirm_delete(
 ) -> None:
     """Confirm and execute flashcard deletion."""
     try:
-        success = flashcard_service.db.delete_flashcard(flashcard_id)
+        user_id = query.from_user.id
+        success = flashcard_service.db.delete_flashcard(flashcard_id, user_id)
 
         if success:
             await query.edit_message_text(
@@ -564,7 +567,8 @@ async def handle_regenerate_sentence(
     """Handle LLM-powered sentence regeneration for fill-in-blank cards."""
     try:
         # Get the flashcard from database
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        user_id = query.from_user.id
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard or not isinstance(flashcard, FillInTheBlank):
             await query.edit_message_text(
@@ -644,8 +648,25 @@ async def regenerate_flashcard_sentence(
 ) -> None:
     """Regenerate the sentence for a fill-in-blank flashcard using LLM."""
     try:
+        # Get user_id from the update_or_query object
+        user_id = None
+        if hasattr(update_or_query, 'from_user'):
+            user_id = update_or_query.from_user.id
+        elif hasattr(update_or_query, 'message') and update_or_query.message:
+            user_id = update_or_query.message.from_user.id
+        elif hasattr(update_or_query, 'callback_query') and update_or_query.callback_query:
+            user_id = update_or_query.callback_query.from_user.id
+        
+        if not user_id:
+            message_text = "❌ Error: Could not identify user."
+            if hasattr(update_or_query, "edit_message_text"):
+                await update_or_query.edit_message_text(message_text)
+            else:
+                await update_or_query.message.reply_text(message_text)
+            return
+            
         # Get the flashcard from database
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id)
+        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard or not isinstance(flashcard, FillInTheBlank):
             message_text = "❌ Error: Fill-in-blank flashcard not found."
@@ -711,7 +732,7 @@ async def regenerate_flashcard_sentence(
         # Update the flashcard in database
         updates = {"text_with_blanks": sentence_with_blank, "answers": [suffix]}
 
-        success = flashcard_service.db.update_flashcard(flashcard_id, updates)
+        success = flashcard_service.db.update_flashcard(flashcard_id, user_id, updates)
 
         if success:
             # Clear regeneration mode using session manager
@@ -791,7 +812,7 @@ async def regenerate_flashcard_sentence(
                     if str(current_fc.id) == flashcard_id:
                         # Get updated flashcard and continue learning
                         updated_flashcard = flashcard_service.db.get_flashcard_by_id(
-                            flashcard_id
+                            flashcard_id, user_id
                         )
                         if updated_flashcard:
                             session.current_flashcard = updated_flashcard
