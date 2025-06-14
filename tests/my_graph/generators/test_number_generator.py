@@ -298,7 +298,7 @@ class TestNumberGenerator:
             
             # Should delegate to simple case forms
             assert len(flashcards) == 1
-            mock_simple.assert_called_once_with(special_number, "ноль")
+            mock_simple.assert_called_once_with(special_number, "ноль", 1)
 
     def test_generate_special_forms_with_gender(self):
         """Test special forms when gender forms are available."""
@@ -322,7 +322,7 @@ class TestNumberGenerator:
             
             # Should delegate to one-type forms
             assert len(flashcards) == 1
-            mock_one_type.assert_called_once_with(special_number, "тест")
+            mock_one_type.assert_called_once_with(special_number, "тест", 1)
 
     def test_generate_special_forms_irregular(self):
         """Test special forms for truly irregular numbers."""

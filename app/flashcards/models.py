@@ -27,6 +27,7 @@ class BaseFlashcard(BaseModel):
 
     # Identification
     id: Optional[str] = Field(None, description="Unique identifier (MongoDB ObjectId)")
+    user_id: int = Field(..., description="Telegram user ID who owns this flashcard")
 
     # Type and content
     type: FlashcardType = Field(..., description="Type of flashcard")
@@ -191,6 +192,7 @@ class DictionaryWord(BaseModel):
 
     # Identification
     id: Optional[str] = Field(None, description="Unique identifier (MongoDB ObjectId)")
+    user_id: int = Field(..., description="Telegram user ID who processed this word")
 
     # Word data
     dictionary_form: str = Field(..., description="The dictionary form of the word")

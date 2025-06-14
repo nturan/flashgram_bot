@@ -15,23 +15,58 @@ from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
-# Global chatbot instance
-chatbot_tutor: ConversationalRussianTutor = None
+# Per-user chatbot instances
+user_chatbots: dict[int, ConversationalRussianTutor] = {}
+
+
+def get_user_chatbot(user_id: int) -> ConversationalRussianTutor:
+    """Get or create a chatbot instance for a specific user."""
+    # Check if user has an API key configured
+    api_key = config_manager.get_setting(user_id, "openai_api_key")
+    if not api_key:
+        raise ValueError("User has no API key configured")
+    
+    # Get user's preferred model
+    model = config_manager.get_setting(user_id, "model") or "gpt-4o"
+    
+    # Create or update chatbot for this user
+    if user_id not in user_chatbots:
+        logger.info(f"Creating new chatbot for user {user_id} with model: {model}")
+        user_chatbots[user_id] = ConversationalRussianTutor(
+            api_key=SecretStr(api_key), model=model
+        )
+    else:
+        # Check if we need to update the API key or model
+        existing_chatbot = user_chatbots[user_id]
+        current_model = existing_chatbot.default_model
+        current_api_key = existing_chatbot.api_key.get_secret_value()
+        
+        if current_api_key != api_key or current_model != model:
+            logger.info(f"Updating chatbot for user {user_id} with model: {model}")
+            user_chatbots[user_id] = ConversationalRussianTutor(
+                api_key=SecretStr(api_key), model=model
+            )
+    
+    return user_chatbots[user_id]
+
+
+def clear_user_chatbot(user_id: int):
+    """Clear chatbot instance for a user (useful when settings change)."""
+    if user_id in user_chatbots:
+        del user_chatbots[user_id]
+        logger.info(f"Cleared chatbot instance for user {user_id}")
 
 
 def set_chatbot_tutor(tutor: ConversationalRussianTutor):
-    """Set the chatbot tutor instance for message processing."""
-    global chatbot_tutor
-    chatbot_tutor = tutor
+    """Legacy method for backward compatibility."""
+    logger.warning("set_chatbot_tutor is deprecated, using per-user chatbots")
 
 
 def reinit_chatbot_with_model(model: str):
-    """Reinitialize the global chatbot with a new model."""
-    global chatbot_tutor
-    logger.info(f"Reinitializing ConversationalRussianTutor with model: {model}")
-    chatbot_tutor = ConversationalRussianTutor(
-        api_key=SecretStr(settings.openai_api_key), model=model
-    )
+    """Legacy method for backward compatibility - now clears all chatbots to force recreation."""
+    global user_chatbots
+    logger.info(f"Model changed to {model}, clearing all chatbot instances for recreation")
+    user_chatbots.clear()
 
 
 async def handle_chatbot_message(
@@ -77,12 +112,6 @@ async def process_chatbot_conversation(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Process user message through the conversational chatbot."""
-    if not chatbot_tutor:
-        await update.message.reply_text(
-            "❌ Chatbot not initialized. Please contact administrator."
-        )
-        return
-
     user_id = update.effective_user.id
     user_text = update.message.text.strip()
     session = session_manager.get_session(user_id)
@@ -91,6 +120,21 @@ async def process_chatbot_conversation(
     await update.message.chat.send_action(action="typing")
 
     try:
+        # Get or create user-specific chatbot
+        try:
+            chatbot_tutor = get_user_chatbot(user_id)
+        except ValueError as e:
+            # User has no API key configured
+            await update.message.reply_text(
+                "❌ **API Key Required**\n\n"
+                "You need to configure your OpenAI API key to use the chatbot.\n\n"
+                "**To set up your API key:**\n"
+                "1. Get your API key from https://platform.openai.com/api-keys\n"
+                "2. Use: `/configure openai_api_key sk-your-key-here`\n\n"
+                "Type `/start` for more detailed setup instructions."
+            )
+            return
+
         # Get conversation history from session
         conversation_history = session.get_conversation_history()
 

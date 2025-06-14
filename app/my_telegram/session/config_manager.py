@@ -17,6 +17,7 @@ class UserConfig:
     model: str = "gpt-4o"  # Default model
     confirm_flashcards: bool = False  # Default flashcard confirmation setting
     cards_per_session: int = 20  # Default number of cards per learning session
+    openai_api_key: Optional[str] = None  # User's OpenAI API key
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
@@ -24,7 +25,16 @@ class UserConfig:
             "model": self.model,
             "confirm_flashcards": self.confirm_flashcards,
             "cards_per_session": self.cards_per_session,
+            "openai_api_key": self._mask_api_key(self.openai_api_key),
         }
+
+    def _mask_api_key(self, api_key: Optional[str]) -> str:
+        """Mask API key for display purposes."""
+        if not api_key:
+            return "Not set"
+        if len(api_key) < 8:
+            return "****"
+        return f"{api_key[:4]}...{api_key[-4:]}"
 
     def update_setting(self, setting_name: str, value: Any) -> bool:
         """Update a specific setting.
@@ -64,6 +74,17 @@ class UserConfig:
                         return True
                 except ValueError:
                     pass
+        elif setting_name == "openai_api_key":
+            if isinstance(value, str) and value.strip():
+                # Basic validation for OpenAI API key format
+                api_key = value.strip()
+                if api_key.startswith("sk-") and len(api_key) > 20:
+                    self.openai_api_key = api_key
+                    return True
+            elif value is None or value == "":
+                # Allow clearing the API key
+                self.openai_api_key = None
+                return True
 
         return False
 
@@ -82,6 +103,8 @@ class UserConfig:
             return self.confirm_flashcards
         elif setting_name == "cards_per_session":
             return self.cards_per_session
+        elif setting_name == "openai_api_key":
+            return self.openai_api_key  # Return actual key for internal use
         return None
 
 
@@ -164,7 +187,8 @@ class ConfigManager:
         return {
             "model": "LLM model name (e.g., gpt-4o, gpt-4o-mini)",
             "confirm_flashcards": "Whether to ask for confirmation before creating flashcards (true/false)",
-            "cards_per_session": "Number of flashcards per learning session (1-100, default: 20)",
+            "cards_per_session": "Number of flashcards per learning session (1-10000, default: 20)",
+            "openai_api_key": "Your OpenAI API key (required for bot functionality)",
         }
 
 

@@ -16,6 +16,7 @@ class AdjectiveGenerator(BaseGenerator):
         adjective: Adjective,
         word_type: str = "adjective",
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """Generate flashcards for a Russian adjective."""
         if generated_sentences is None:
@@ -24,21 +25,21 @@ class AdjectiveGenerator(BaseGenerator):
         dictionary_form = adjective.dictionary_form
 
         # Generate fill-in-the-gap flashcards for different forms
-        flashcards.extend(self._generate_masculine_forms(adjective, dictionary_form))
-        flashcards.extend(self._generate_feminine_forms(adjective, dictionary_form))
-        flashcards.extend(self._generate_neuter_forms(adjective, dictionary_form))
-        flashcards.extend(self._generate_plural_forms(adjective, dictionary_form))
-        flashcards.extend(self._generate_short_forms(adjective, dictionary_form))
+        flashcards.extend(self._generate_masculine_forms(adjective, dictionary_form, user_id))
+        flashcards.extend(self._generate_feminine_forms(adjective, dictionary_form, user_id))
+        flashcards.extend(self._generate_neuter_forms(adjective, dictionary_form, user_id))
+        flashcards.extend(self._generate_plural_forms(adjective, dictionary_form, user_id))
+        flashcards.extend(self._generate_short_forms(adjective, dictionary_form, user_id))
 
         # Generate comparative and superlative flashcards
         flashcards.extend(
-            self._generate_comparison_flashcards(adjective, dictionary_form)
+            self._generate_comparison_flashcards(adjective, dictionary_form, user_id)
         )
 
         return flashcards
 
     def _generate_masculine_forms(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for masculine adjective forms."""
         flashcards = []
@@ -53,13 +54,14 @@ class AdjectiveGenerator(BaseGenerator):
                     word_type="adjective",
                     tags=["russian", "adjective", "masculine", case, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_feminine_forms(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for feminine adjective forms."""
         flashcards = []
@@ -74,13 +76,14 @@ class AdjectiveGenerator(BaseGenerator):
                     word_type="adjective",
                     tags=["russian", "adjective", "feminine", case, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_neuter_forms(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for neuter adjective forms."""
         flashcards = []
@@ -95,13 +98,14 @@ class AdjectiveGenerator(BaseGenerator):
                     word_type="adjective",
                     tags=["russian", "adjective", "neuter", case, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_plural_forms(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for plural adjective forms."""
         flashcards = []
@@ -116,13 +120,14 @@ class AdjectiveGenerator(BaseGenerator):
                     word_type="adjective",
                     tags=["russian", "adjective", "plural", case, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_short_forms(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for short adjective forms."""
         flashcards = []
@@ -144,13 +149,14 @@ class AdjectiveGenerator(BaseGenerator):
                     word_type="adjective",
                     tags=["russian", "adjective", "short_form", gender, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_comparison_flashcards(
-        self, adjective: Adjective, dictionary_form: str
+        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for comparative and superlative forms."""
         flashcards = []
@@ -162,6 +168,7 @@ class AdjectiveGenerator(BaseGenerator):
                 back=adjective.comparative,
                 tags=["russian", "adjective", "comparative", "grammar"],
                 title=f"{dictionary_form} - comparative",
+                user_id=user_id,
             )
             flashcards.append(comparative_flashcard)
 
@@ -172,6 +179,7 @@ class AdjectiveGenerator(BaseGenerator):
                 back=adjective.superlative,
                 tags=["russian", "adjective", "superlative", "grammar"],
                 title=f"{dictionary_form} - superlative",
+                user_id=user_id,
             )
             flashcards.append(superlative_flashcard)
 

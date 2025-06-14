@@ -146,6 +146,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
             focus_areas: Optional[List[str]] = None,
             word: Optional[str] = None,
+            user_id: Optional[int] = None,
         ) -> Dict[str, Any]:
             """Generate flashcards from grammar analysis results.
 
@@ -153,12 +154,13 @@ Always explain what you're doing and ask for user confirmation before creating f
                 analysis_data: Results from grammar analysis (optional if word is provided)
                 focus_areas: Optional list of specific areas to focus on (e.g., ['cases', 'gender'])
                 word: Optional word to analyze if analysis_data not provided
+                user_id: User ID for associating flashcards with the user
 
             Returns:
                 Dictionary with generated flashcards and count
             """
             return generate_flashcards_from_analysis_impl(
-                analysis_data, focus_areas, word
+                analysis_data, focus_areas, word, user_id
             )
 
         @tool
@@ -326,24 +328,17 @@ Always explain what you're doing and ask for user confirmation before creating f
                 tool_args = tool_call["args"]
                 tool_call_id = tool_call["id"]
 
-                # Inject user_id for bulk processing tools
+                # Inject user_id for tools that need it
                 if (
                     tool_name
                     in [
                         "process_bulk_text_for_flashcards",
                         "check_bulk_processing_status",
+                        "generate_flashcards_from_analysis",
                     ]
                     and user_id
                 ):
-                    if (
-                        "user_id" not in tool_args
-                        and tool_name == "process_bulk_text_for_flashcards"
-                    ):
-                        tool_args["user_id"] = user_id
-                    elif (
-                        "user_id" not in tool_args
-                        and tool_name == "check_bulk_processing_status"
-                    ):
+                    if "user_id" not in tool_args:
                         tool_args["user_id"] = user_id
 
                 # Find and execute the tool

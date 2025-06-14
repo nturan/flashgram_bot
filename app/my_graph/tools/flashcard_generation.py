@@ -21,9 +21,17 @@ def generate_flashcards_from_analysis_impl(
     analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     focus_areas: Optional[List[str]] = None,
     word: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Implementation for flashcard generation tool."""
     try:
+        # Check if user_id is provided - required for multi-user support
+        if user_id is None:
+            return {
+                "flashcards_generated": 0,
+                "error": "User ID is required for flashcard generation",
+                "success": False,
+            }
         # Handle case where analysis_data is a list (multiple words analyzed)
         if isinstance(analysis_data, list):
             if len(analysis_data) == 1:
@@ -35,7 +43,7 @@ def generate_flashcards_from_analysis_impl(
 
                 for single_analysis in analysis_data:
                     result = generate_flashcards_from_analysis_impl(
-                        single_analysis, focus_areas, None
+                        single_analysis, focus_areas, None, user_id
                     )
                     if result.get("success"):
                         total_flashcards += result.get("flashcards_generated", 0)
@@ -128,12 +136,12 @@ def generate_flashcards_from_analysis_impl(
             if grammar_obj and word_type:
                 # Generate flashcards
                 flashcards = flashcard_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type
+                    grammar_obj, word_type, None, user_id
                 )
 
                 # Save to database
                 saved_count = flashcard_generator.save_flashcards_to_database(
-                    flashcards
+                    user_id, flashcards
                 )
 
                 # Track dictionary word only if flashcards were generated successfully
@@ -146,11 +154,12 @@ def generate_flashcards_from_analysis_impl(
 
                             # Check if word already exists in dictionary
                             existing_word = flashcard_service.db.get_processed_word(
-                                dictionary_form, word_type_enum
+                                user_id, dictionary_form, word_type_enum
                             )
                             if existing_word:
                                 # Update existing word stats
                                 flashcard_service.db.update_processed_word_stats(
+                                    user_id,
                                     dictionary_form,
                                     word_type_enum,
                                     additional_flashcards=saved_count,
@@ -161,6 +170,7 @@ def generate_flashcards_from_analysis_impl(
                             else:
                                 # Add new processed word
                                 flashcard_service.db.add_processed_word(
+                                    user_id=user_id,
                                     dictionary_form=dictionary_form,
                                     word_type=word_type_enum,
                                     flashcards_generated=saved_count,

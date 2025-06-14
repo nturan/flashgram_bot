@@ -16,6 +16,7 @@ class PronounGenerator(BaseGenerator):
         pronoun: Pronoun,
         word_type: str = "pronoun",
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """Generate flashcards for a Russian pronoun."""
         if generated_sentences is None:
@@ -26,7 +27,7 @@ class PronounGenerator(BaseGenerator):
         # Determine declension pattern based on available fields
         if pronoun.singular is not None or pronoun.plural is not None:
             # Has noun-like declension (personal pronouns)
-            flashcards.extend(self._generate_noun_like_forms(pronoun, dictionary_form))
+            flashcards.extend(self._generate_noun_like_forms(pronoun, dictionary_form, user_id))
         elif (
             pronoun.masculine is not None
             or pronoun.feminine is not None
@@ -34,19 +35,19 @@ class PronounGenerator(BaseGenerator):
         ):
             # Has adjective-like declension (demonstrative, possessive pronouns)
             flashcards.extend(
-                self._generate_adjective_like_forms(pronoun, dictionary_form)
+                self._generate_adjective_like_forms(pronoun, dictionary_form, user_id)
             )
         else:
             # Special/irregular declension
-            flashcards.extend(self._generate_special_forms(pronoun, dictionary_form))
+            flashcards.extend(self._generate_special_forms(pronoun, dictionary_form, user_id))
 
         # Generate basic property flashcards
-        flashcards.extend(self._generate_property_flashcards(pronoun, dictionary_form))
+        flashcards.extend(self._generate_property_flashcards(pronoun, dictionary_form, user_id))
 
         return flashcards
 
     def _generate_noun_like_forms(
-        self, pronoun: Pronoun, dictionary_form: str
+        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for noun-like pronouns (personal pronouns)."""
         flashcards = []
@@ -64,6 +65,7 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "personal", case, "singular"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -80,13 +82,14 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "personal", case, "plural"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_adjective_like_forms(
-        self, pronoun: Pronoun, dictionary_form: str
+        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for adjective-like pronouns (demonstrative, possessive)."""
         flashcards = []
@@ -104,6 +107,7 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "demonstrative", case, "masculine"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -120,6 +124,7 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "demonstrative", case, "feminine"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -136,6 +141,7 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "demonstrative", case, "neuter"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -152,13 +158,14 @@ class PronounGenerator(BaseGenerator):
                         word_type="pronoun",
                         tags=["russian", "pronoun", "demonstrative", case, "plural"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_special_forms(
-        self, pronoun: Pronoun, dictionary_form: str
+        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for pronouns with special declension patterns."""
         flashcards = []
@@ -168,11 +175,11 @@ class PronounGenerator(BaseGenerator):
 
         if pronoun.singular:
             # Treat as noun-like if singular is available
-            flashcards.extend(self._generate_noun_like_forms(pronoun, dictionary_form))
+            flashcards.extend(self._generate_noun_like_forms(pronoun, dictionary_form, user_id))
         elif pronoun.masculine:
             # Treat as adjective-like if gender forms are available
             flashcards.extend(
-                self._generate_adjective_like_forms(pronoun, dictionary_form)
+                self._generate_adjective_like_forms(pronoun, dictionary_form, user_id)
             )
         else:
             # Create a basic two-sided card for very irregular pronouns
@@ -181,13 +188,14 @@ class PronounGenerator(BaseGenerator):
                 back=pronoun.english_translation,
                 tags=["russian", "pronoun", "special", "translation"],
                 title=f"{dictionary_form} - meaning",
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_property_flashcards(
-        self, pronoun: Pronoun, dictionary_form: str
+        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for pronoun properties and characteristics."""
         flashcards = []
@@ -198,6 +206,7 @@ class PronounGenerator(BaseGenerator):
             back=pronoun.english_translation,
             tags=["russian", "pronoun", "translation"],
             title=f"{dictionary_form} - translation",
+            user_id=user_id,
         )
         flashcards.append(flashcard)
 
@@ -208,6 +217,7 @@ class PronounGenerator(BaseGenerator):
                 back=pronoun.notes,
                 tags=["russian", "pronoun", "notes", "grammar"],
                 title=f"{dictionary_form} - special notes",
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 

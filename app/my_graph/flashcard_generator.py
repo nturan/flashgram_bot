@@ -31,6 +31,7 @@ class FlashcardGenerator:
         grammar_obj: Any,
         word_type: str,
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """
         Generate flashcards from a grammar object (Noun, Adjective, Verb, Pronoun, or Number).
@@ -48,23 +49,23 @@ class FlashcardGenerator:
         try:
             if isinstance(grammar_obj, Noun):
                 flashcards = self.noun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences
+                    grammar_obj, word_type, generated_sentences, user_id
                 )
             elif isinstance(grammar_obj, Adjective):
                 flashcards = self.adjective_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences
+                    grammar_obj, word_type, generated_sentences, user_id
                 )
             elif isinstance(grammar_obj, Verb):
                 flashcards = self.verb_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences
+                    grammar_obj, word_type, generated_sentences, user_id
                 )
             elif isinstance(grammar_obj, Pronoun):
                 flashcards = self.pronoun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences
+                    grammar_obj, word_type, generated_sentences, user_id
                 )
             elif isinstance(grammar_obj, Number):
                 flashcards = self.number_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences
+                    grammar_obj, word_type, generated_sentences, user_id
                 )
             else:
                 logger.warning(f"Unknown grammar object type: {type(grammar_obj)}")
@@ -74,7 +75,7 @@ class FlashcardGenerator:
 
         return flashcards
 
-    def save_flashcards_to_database(self, flashcards: List[Any]) -> int:
+    def save_flashcards_to_database(self, user_id: int, flashcards: List[Any]) -> int:
         """
         Save generated flashcards to the database.
 
@@ -88,6 +89,9 @@ class FlashcardGenerator:
 
         for flashcard in flashcards:
             try:
+                # Set user_id on the flashcard
+                flashcard.user_id = user_id
+                
                 flashcard_id = self.service.db.add_flashcard(flashcard)
                 if flashcard_id:
                     saved_count += 1

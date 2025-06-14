@@ -34,7 +34,7 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         cards_per_session = config_manager.get_setting(user_id, "cards_per_session") or 20
         
         # Get flashcards for learning session
-        flashcards = flashcard_service.get_learning_session_flashcards(limit=cards_per_session)
+        flashcards = flashcard_service.get_learning_session_flashcards(user_id=user_id, limit=cards_per_session)
 
         if not flashcards:
             await update.message.reply_text(
@@ -241,7 +241,7 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         session.score += 1
 
     # Update flashcard statistics in database
-    flashcard_service.update_flashcard_after_review(current_flashcard, is_correct)
+    flashcard_service.update_flashcard_after_review(user_id, current_flashcard, is_correct)
 
     # Send feedback
     await safe_send_markdown(update, feedback)

@@ -15,10 +15,49 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
-    await update.message.reply_html(
-        rf"Hi {user.mention_html()}! I'm a Russian language tutor bot. Send me Russian words or sentences, and I'll automatically analyze them and create flashcards for practice!",
-        reply_markup=ForceReply(selective=True),
-    )
+    user_id = user.id
+    
+    # Check if user has an API key configured
+    api_key = config_manager.get_setting(user_id, "openai_api_key")
+    
+    if not api_key:
+        # New user onboarding flow
+        response = (
+            f"Hi {user.mention_html()}! Welcome to the Russian Language Tutor Bot! 🇷🇺\n\n"
+            "I can help you learn Russian by:\n"
+            "• Analyzing Russian grammar automatically\n"
+            "• Creating flashcards for practice\n"
+            "• Teaching with spaced repetition\n\n"
+            "**🔑 Setup Required**\n"
+            "To get started, I need your OpenAI API key for language processing.\n\n"
+            "**How to get your API key:**\n"
+            "1. Visit https://platform.openai.com/api-keys\n"
+            "2. Create an account or sign in\n"
+            "3. Click 'Create new secret key'\n"
+            "4. Copy the key (starts with 'sk-')\n\n"
+            "**Set your API key:**\n"
+            "Use: `/configure openai_api_key sk-your-key-here`\n\n"
+            "💡 Your API key is encrypted and only used for your language learning sessions.\n"
+            "Each user needs their own key for personalized flashcards and progress tracking."
+        )
+        
+        await update.message.reply_html(
+            response,
+            reply_markup=ForceReply(selective=True),
+        )
+    else:
+        # Existing user welcome back
+        response = (
+            f"Welcome back {user.mention_html()}! 🇷🇺\n\n"
+            "I'm ready to help you learn Russian! Send me Russian words or sentences, "
+            "and I'll automatically analyze them and create flashcards for practice!\n\n"
+            "Type /help to see all available commands."
+        )
+        
+        await update.message.reply_html(
+            response,
+            reply_markup=ForceReply(selective=True),
+        )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -54,10 +93,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show flashcard dashboard with statistics and progress."""
     await update.message.chat.send_action(action="typing")
+    user_id = update.effective_user.id
 
     try:
         # Get dashboard data
-        dashboard_data = flashcard_service.get_dashboard_data()
+        dashboard_data = flashcard_service.get_dashboard_data(user_id)
 
         if not dashboard_data:
             await update.message.reply_text(
@@ -154,10 +194,11 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def dbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Check MongoDB connection status and flashcard count."""
     await update.message.chat.send_action(action="typing")
+    user_id = update.effective_user.id
 
     try:
         # Get flashcard statistics
-        stats = flashcard_service.get_flashcard_stats()
+        stats = flashcard_service.get_flashcard_stats(user_id)
 
         if stats:
             tags_str = ", ".join(stats.get("tags", [])[:5])  # Show first 5 tags
@@ -199,13 +240,14 @@ async def dictionary_command(
 ) -> None:
     """Show dictionary statistics and recent processed words."""
     await update.message.chat.send_action(action="typing")
+    user_id = update.effective_user.id
 
     try:
         # Get dictionary statistics
-        dict_stats = flashcard_service.db.get_dictionary_stats()
+        dict_stats = flashcard_service.db.get_dictionary_stats(user_id)
 
         # Get recent processed words (last 10)
-        recent_words = flashcard_service.db.get_processed_words_by_type(limit=10)
+        recent_words = flashcard_service.db.get_processed_words_by_type(user_id, limit=10)
 
         # Build response
         response = "📖 *Dictionary Statistics*\n\n"
@@ -324,40 +366,19 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             success = config_manager.update_setting(user_id, setting_name, value)
 
             if success:
-                # If model was updated, reinitialize systems
-                if setting_name == "model":
+                # If model or API key was updated, clear user's chatbot for recreation
+                if setting_name in ["model", "openai_api_key"]:
                     from app.my_graph.sentence_generation.llm_sentence_generator import (
                         reinit_sentence_generator_llm,
                     )
-                    from .chatbot_handlers import reinit_chatbot_with_model
+                    from .chatbot_handlers import clear_user_chatbot
 
-                    reinit_sentence_generator_llm(value)
-                    reinit_chatbot_with_model(value)
+                    if setting_name == "model":
+                        reinit_sentence_generator_llm(value)
+                    
+                    # Clear user's chatbot so it gets recreated with new settings
+                    clear_user_chatbot(user_id)
 
-                # If chatbot mode was changed, inform user
-                elif setting_name == "use_chatbot":
-                    if value:
-                        response = f"✅ *Setting Updated*\n\n"
-                        response += (
-                            f"📝 `{setting_name}` has been set to: `{value}`\n\n"
-                        )
-                        response += "🤖 **Chatbot mode enabled!** You can now have natural conversations with me. I can:\n"
-                        response += "• Analyze Russian grammar when you ask\n"
-                        response += "• Correct mixed-language mistakes\n"
-                        response += "• Generate flashcards based on our conversation\n"
-                        response += "• Translate phrases\n"
-                        response += "• Create example sentences\n\n"
-                        response += "Try saying something like: *'Help me analyze the word стол'* or *'I tried to say Я хочу купить bread но забыл русское слово'*"
-                        await safe_send_markdown(update, response)
-                        return
-                    else:
-                        response = f"✅ *Setting Updated*\n\n"
-                        response += (
-                            f"📝 `{setting_name}` has been set to: `{value}`\n\n"
-                        )
-                        response += "📚 **Classic mode enabled!** Back to the original word analysis system."
-                        await safe_send_markdown(update, response)
-                        return
                 response = f"✅ *Setting Updated*\n\n"
                 response += f"📝 `{setting_name}` has been set to: `{value}`"
                 await safe_send_markdown(update, response)
@@ -402,10 +423,10 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Clear chatbot conversation history."""
     user_id = update.effective_user.id
 
-    # Check if user is using chatbot mode
-    use_chatbot = config_manager.get_setting(user_id, "use_chatbot")
+    # Check if user has API key configured (needed for chatbot)
+    api_key = config_manager.get_setting(user_id, "openai_api_key")
 
-    if use_chatbot:
+    if api_key:
         from .chatbot_handlers import clear_chatbot_conversation
 
         clear_chatbot_conversation(user_id)
@@ -414,8 +435,8 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         response += "Your chatbot conversation history has been reset. Starting fresh!"
         await safe_send_markdown(update, response)
     else:
-        response = "ℹ️ *Clear Command*\n\n"
-        response += "This command clears chatbot conversation history, but you're currently in classic mode.\n\n"
-        response += "To enable chatbot mode with conversation history, use:\n"
-        response += "`/configure use_chatbot true`"
+        response = "❌ *API Key Required*\n\n"
+        response += "You need to configure your OpenAI API key to use the chatbot.\n\n"
+        response += "Use: `/configure openai_api_key sk-your-key-here`\n"
+        response += "Type `/start` for detailed setup instructions."
         await safe_send_markdown(update, response)

@@ -17,6 +17,7 @@ class VerbGenerator(BaseGenerator):
         verb: Verb,
         word_type: str = "verb",
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """Generate flashcards for a Russian verb."""
         if generated_sentences is None:
@@ -25,21 +26,21 @@ class VerbGenerator(BaseGenerator):
         dictionary_form = verb.dictionary_form
 
         # Generate aspect and conjugation flashcards
-        flashcards.extend(self._generate_aspect_flashcards(verb, dictionary_form))
-        flashcards.extend(self._generate_conjugation_flashcards(verb, dictionary_form))
+        flashcards.extend(self._generate_aspect_flashcards(verb, dictionary_form, user_id))
+        flashcards.extend(self._generate_conjugation_flashcards(verb, dictionary_form, user_id))
 
         # Generate tense-specific flashcards
         flashcards.extend(
-            self._generate_present_tense_flashcards(verb, dictionary_form)
+            self._generate_present_tense_flashcards(verb, dictionary_form, user_id)
         )
-        flashcards.extend(self._generate_past_tense_flashcards(verb, dictionary_form))
-        flashcards.extend(self._generate_future_tense_flashcards(verb, dictionary_form))
-        flashcards.extend(self._generate_imperative_flashcards(verb, dictionary_form))
+        flashcards.extend(self._generate_past_tense_flashcards(verb, dictionary_form, user_id))
+        flashcards.extend(self._generate_future_tense_flashcards(verb, dictionary_form, user_id))
+        flashcards.extend(self._generate_imperative_flashcards(verb, dictionary_form, user_id))
 
         return flashcards
 
     def _generate_aspect_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for verb aspect."""
         flashcards = []
@@ -54,19 +55,20 @@ class VerbGenerator(BaseGenerator):
             correct_indices=[correct_aspect_index],
             tags=["russian", "verb", "aspect", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - aspect (multiple choice)",
+            user_id=user_id,
         )
         flashcards.append(aspect_flashcard)
 
         # Generate aspect pair flashcards if available
         if verb.aspect_pair and verb.aspect_pair.strip():
             flashcards.extend(
-                self._generate_aspect_pair_flashcards(verb, dictionary_form)
+                self._generate_aspect_pair_flashcards(verb, dictionary_form, user_id)
             )
 
         return flashcards
 
     def _generate_aspect_pair_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for aspect pairs."""
         flashcards = []
@@ -87,6 +89,7 @@ class VerbGenerator(BaseGenerator):
             correct_indices=[correct_index],
             tags=["russian", "verb", "aspect_pair", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - aspect pair comparison",
+            user_id=user_id,
         )
         flashcards.append(aspect_pair_flashcard)
 
@@ -106,13 +109,14 @@ class VerbGenerator(BaseGenerator):
             correct_indices=[correct_index_imp],
             tags=["russian", "verb", "aspect_pair", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - aspect pair comparison (imperfective)",
+            user_id=user_id,
         )
         flashcards.append(aspect_pair_flashcard_imp)
 
         return flashcards
 
     def _generate_conjugation_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for verb conjugation patterns."""
         flashcards = []
@@ -129,13 +133,14 @@ class VerbGenerator(BaseGenerator):
                 back=f"я {first_person}, ты {second_person}",
                 tags=["russian", "verb", "present", "conjugation"],
                 title=f"{dictionary_form} - present tense pattern",
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_present_tense_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for present tense forms."""
         flashcards = []
@@ -159,13 +164,14 @@ class VerbGenerator(BaseGenerator):
                     word_type="verb",
                     tags=["russian", "verb", "present", "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_past_tense_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for past tense forms."""
         flashcards = []
@@ -187,13 +193,14 @@ class VerbGenerator(BaseGenerator):
                     word_type="verb",
                     tags=["russian", "verb", "past", "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_future_tense_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for future tense forms."""
         flashcards = []
@@ -217,13 +224,14 @@ class VerbGenerator(BaseGenerator):
                     word_type="verb",
                     tags=["russian", "verb", "future", "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_imperative_flashcards(
-        self, verb: Verb, dictionary_form: str
+        self, verb: Verb, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for imperative forms."""
         flashcards = []
@@ -240,6 +248,7 @@ class VerbGenerator(BaseGenerator):
                 word_type="verb",
                 tags=["russian", "verb", "imperative", "grammar"],
                 grammatical_key=grammatical_key,
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 
@@ -255,6 +264,7 @@ class VerbGenerator(BaseGenerator):
                 word_type="verb",
                 tags=["russian", "verb", "imperative", "grammar"],
                 grammatical_key=grammatical_key,
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 

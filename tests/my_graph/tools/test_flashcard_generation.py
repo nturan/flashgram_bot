@@ -46,6 +46,7 @@ class TestFlashcardGeneration:
         # Mock flashcard generator
         mock_flashcards = [
             TwoSidedCard(
+                user_id=1,
                 front="дом",
                 back="house",
                 word_type=WordType.NOUN,
@@ -60,13 +61,13 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["flashcards_generated"] == 1
             assert result["word_type"] == "noun"
             mock_fg.generate_flashcards_from_grammar.assert_called_once()
-            mock_fg.save_flashcards_to_database.assert_called_once_with(mock_flashcards)
+            mock_fg.save_flashcards_to_database.assert_called_once_with(1, mock_flashcards)
 
     def test_generate_flashcards_from_analysis_with_adjective_data(self):
         """Test flashcard generation with adjective analysis data."""
@@ -115,6 +116,7 @@ class TestFlashcardGeneration:
         
         mock_flashcards = [
             TwoSidedCard(
+                user_id=1,
                 front="красивый",
                 back="beautiful",
                 word_type=WordType.ADJECTIVE,
@@ -129,7 +131,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["word_type"] == "adjective"
@@ -169,12 +171,12 @@ class TestFlashcardGeneration:
                 }
             }
             
-            mock_flashcards = [TwoSidedCard(front="кот", back="cat", word_type=WordType.NOUN)]
+            mock_flashcards = [TwoSidedCard(user_id=1, front="кот", back="cat", word_type=WordType.NOUN)]
             mock_fg.generate_flashcards_from_grammar.return_value = mock_flashcards
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(word="кот")
+            result = generate_flashcards_from_analysis_impl(word="кот", user_id=1)
             
             assert result["success"] is True
             mock_analyze.assert_called_once_with("кот")
@@ -208,7 +210,7 @@ class TestFlashcardGeneration:
             }
         ]
         
-        mock_flashcards = [TwoSidedCard(front="дом", back="house", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="дом", back="house", word_type=WordType.NOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -217,7 +219,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_list)
+            result = generate_flashcards_from_analysis_impl(analysis_list, user_id=1)
             
             assert result["success"] is True
             assert result["flashcards_generated"] == 2  # 2 calls, 1 each
@@ -240,7 +242,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="дом", back="house", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="дом", back="house", word_type=WordType.NOUN)]
         mock_existing_word = {"dictionary_form": "дом", "flashcards_count": 5}
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
@@ -250,7 +252,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = mock_existing_word
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             mock_fs.db.update_processed_word_stats.assert_called_once()
@@ -272,7 +274,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="собака", back="dog", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="собака", back="dog", word_type=WordType.NOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -281,7 +283,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None  # New word
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             mock_fs.db.add_processed_word.assert_called_once()
@@ -305,7 +307,7 @@ class TestFlashcardGeneration:
         
         focus_areas = ["declension", "cases"]
         
-        mock_flashcards = [TwoSidedCard(front="стол", back="table", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="стол", back="table", word_type=WordType.NOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -314,7 +316,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data, focus_areas=focus_areas)
+            result = generate_flashcards_from_analysis_impl(analysis_data, focus_areas=focus_areas, user_id=1)
             
             assert result["success"] is True
             assert result["focus_areas"] == focus_areas
@@ -332,7 +334,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        result = generate_flashcards_from_analysis_impl(analysis_data)
+        result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
         
         assert result["success"] is False
         assert result["flashcards_generated"] == 0
@@ -340,7 +342,7 @@ class TestFlashcardGeneration:
 
     def test_generate_flashcards_from_analysis_no_valid_data(self):
         """Test handling of missing or invalid analysis data."""
-        result = generate_flashcards_from_analysis_impl(None)
+        result = generate_flashcards_from_analysis_impl(None, user_id=1)
         
         assert result["success"] is False
         assert result["flashcards_generated"] == 0
@@ -363,13 +365,13 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="дом", back="house", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="дом", back="house", word_type=WordType.NOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg:
             mock_fg.generate_flashcards_from_grammar.return_value = mock_flashcards
             mock_fg.save_flashcards_to_database.return_value = 0  # Save failed
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["flashcards_generated"] == 0
@@ -392,7 +394,7 @@ class TestFlashcardGeneration:
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg:
             mock_fg.generate_flashcards_from_grammar.side_effect = Exception("Unexpected error")
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is False
             assert result["flashcards_generated"] == 0
@@ -422,7 +424,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="читать", back="to read", word_type=WordType.VERB)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="читать", back="to read", word_type=WordType.VERB)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -431,7 +433,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["word_type"] == "verb"
@@ -457,7 +459,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="я", back="I", word_type=WordType.PRONOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="я", back="I", word_type=WordType.PRONOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -466,7 +468,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["word_type"] == "pronoun"
@@ -508,7 +510,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="один", back="one", word_type=WordType.UNKNOWN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="один", back="one", word_type=WordType.UNKNOWN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
@@ -517,7 +519,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["word_type"] == "number"
@@ -536,7 +538,7 @@ class TestFlashcardGeneration:
             }
         }
         
-        mock_flashcards = [TwoSidedCard(front="книга", back="book", word_type=WordType.NOUN)]
+        mock_flashcards = [TwoSidedCard(user_id=1, front="книга", back="book", word_type=WordType.NOUN)]
         
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs, \
@@ -550,7 +552,7 @@ class TestFlashcardGeneration:
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             mock_noun.assert_called_once()  # Verify Pydantic model was created from dict

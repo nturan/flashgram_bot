@@ -16,6 +16,7 @@ class NounGenerator(BaseGenerator):
         noun: Noun,
         word_type: str = "noun",
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """Generate flashcards for a Russian noun."""
         flashcards = []
@@ -27,21 +28,21 @@ class NounGenerator(BaseGenerator):
 
         # Generate fill-in-the-gap flashcards for singular forms
         flashcards.extend(
-            self._generate_singular_forms(noun, dictionary_form, generated_sentences)
+            self._generate_singular_forms(noun, dictionary_form, generated_sentences, user_id)
         )
 
         # Generate fill-in-the-gap flashcards for plural forms
         flashcards.extend(
-            self._generate_plural_forms(noun, dictionary_form, generated_sentences)
+            self._generate_plural_forms(noun, dictionary_form, generated_sentences, user_id)
         )
 
         # Generate gender and animacy flashcards
-        flashcards.extend(self._generate_property_flashcards(noun, dictionary_form))
+        flashcards.extend(self._generate_property_flashcards(noun, dictionary_form, user_id))
 
         return flashcards
 
     def _generate_singular_forms(
-        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str]
+        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for singular noun forms."""
         flashcards = []
@@ -62,13 +63,14 @@ class NounGenerator(BaseGenerator):
                     tags=["russian", "noun", "singular", case, "grammar"],
                     grammatical_key=grammatical_key,
                     pre_generated_sentence=pre_generated_sentence,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_plural_forms(
-        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str]
+        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for plural noun forms."""
         flashcards = []
@@ -83,13 +85,14 @@ class NounGenerator(BaseGenerator):
                     word_type="noun",
                     tags=["russian", "noun", "plural", case, "grammar"],
                     grammatical_key=grammatical_key,
+                    user_id=user_id,
                 )
                 flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_property_flashcards(
-        self, noun: Noun, dictionary_form: str
+        self, noun: Noun, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for noun properties (gender, animacy)."""
         flashcards = []
@@ -105,6 +108,7 @@ class NounGenerator(BaseGenerator):
             tags=["russian", "noun", "gender", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - gender",
             allow_multiple=False,
+            user_id=user_id,
         )
         flashcards.append(gender_flashcard)
 
@@ -120,6 +124,7 @@ class NounGenerator(BaseGenerator):
             tags=["russian", "noun", "animacy", "grammar", "multiple_choice"],
             title=f"{dictionary_form} - animacy",
             allow_multiple=False,
+            user_id=user_id,
         )
         flashcards.append(animacy_flashcard)
 

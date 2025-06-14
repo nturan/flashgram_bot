@@ -52,6 +52,7 @@ class TestMongoDBConnection:
 
             # Create a test flashcard
             test_card = TwoSidedCard(
+                user_id=1,
                 front="Test Question",
                 back="Test Answer",
                 type=FlashcardType.TWO_SIDED,
@@ -94,6 +95,7 @@ class TestMongoDBConnection:
 
         # Create test flashcard
         test_card = TwoSidedCard(
+            user_id=1,
             front="Test Question",
             back="Test Answer",
             type=FlashcardType.TWO_SIDED,

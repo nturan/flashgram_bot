@@ -27,6 +27,7 @@ class BaseGenerator:
         tags: List[str],
         grammatical_key: str = None,
         pre_generated_sentence: str = None,
+        user_id: int = 1,
     ) -> FillInTheBlank:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
 
@@ -50,6 +51,7 @@ class BaseGenerator:
         )
 
         return FillInTheBlank(
+            user_id=user_id,
             text_with_blanks=sentence_with_blank,
             answers=[suffix],
             case_sensitive=False,
@@ -64,10 +66,10 @@ class BaseGenerator:
         )
 
     def create_two_sided_card(
-        self, front: str, back: str, tags: List[str], title: str
+        self, front: str, back: str, tags: List[str], title: str, user_id: int = 1
     ) -> TwoSidedCard:
         """Create a two-sided flashcard."""
-        return TwoSidedCard(front=front, back=back, tags=tags, title=title)
+        return TwoSidedCard(user_id=user_id, front=front, back=back, tags=tags, title=title)
 
     def create_multiple_choice_card(
         self,
@@ -77,9 +79,11 @@ class BaseGenerator:
         tags: List[str],
         title: str,
         allow_multiple: bool = False,
+        user_id: int = 1,
     ) -> MultipleChoice:
         """Create a multiple choice flashcard."""
         return MultipleChoice(
+            user_id=user_id,
             question=question,
             options=options,
             correct_indices=correct_indices,

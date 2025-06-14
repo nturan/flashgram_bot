@@ -16,6 +16,7 @@ class NumberGenerator(BaseGenerator):
         number: Number,
         word_type: str = "number",
         generated_sentences: Dict[str, str] = None,
+        user_id: int = 1,
     ) -> List[Any]:
         """Generate flashcards for a Russian number."""
         if generated_sentences is None:
@@ -26,27 +27,27 @@ class NumberGenerator(BaseGenerator):
         # Generate flashcards based on available forms
         if number.masculine or number.feminine or number.neuter:
             # Has gender forms like "один" - generate one-type forms
-            flashcards.extend(self._generate_one_type_forms(number, dictionary_form))
+            flashcards.extend(self._generate_one_type_forms(number, dictionary_form, user_id))
         elif number.compound_forms:
             # Has compound forms - generate compound forms
-            flashcards.extend(self._generate_compound_forms(number, dictionary_form))
+            flashcards.extend(self._generate_compound_forms(number, dictionary_form, user_id))
         elif number.singular and number.plural:
             # Has both singular and plural - generate thousands forms
-            flashcards.extend(self._generate_thousands_forms(number, dictionary_form))
+            flashcards.extend(self._generate_thousands_forms(number, dictionary_form, user_id))
         elif number.singular:
             # Has only singular - generate simple case forms
-            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form))
+            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form, user_id))
         else:
             # Special/irregular - generate special forms
-            flashcards.extend(self._generate_special_forms(number, dictionary_form))
+            flashcards.extend(self._generate_special_forms(number, dictionary_form, user_id))
 
         # Generate number property and usage flashcards
-        flashcards.extend(self._generate_property_flashcards(number, dictionary_form))
+        flashcards.extend(self._generate_property_flashcards(number, dictionary_form, user_id))
 
         return flashcards
 
     def _generate_one_type_forms(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for 'one' type numbers (один/одна/одно)."""
         flashcards = []
@@ -64,6 +65,7 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "one", case, "masculine"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -80,6 +82,7 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "one", case, "feminine"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -96,13 +99,14 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "one", case, "neuter"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_simple_case_forms(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for numbers with simple case declension."""
         flashcards = []
@@ -119,13 +123,14 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "simple_case", case],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_thousands_forms(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for thousands-type numbers (тысяча, миллион)."""
         flashcards = []
@@ -143,6 +148,7 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "thousands", case, "singular"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
@@ -159,13 +165,14 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "thousands", case, "plural"],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_compound_forms(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for compound numbers (двадцать один, etc.)."""
         flashcards = []
@@ -182,22 +189,23 @@ class NumberGenerator(BaseGenerator):
                         word_type="number",
                         tags=["russian", "number", "compound", case_form],
                         grammatical_key=grammatical_key,
+                        user_id=user_id,
                     )
                     flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_special_forms(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for special/irregular numbers."""
         flashcards = []
 
         # For special numbers, try to handle available forms intelligently
         if number.singular:
-            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form))
+            flashcards.extend(self._generate_simple_case_forms(number, dictionary_form, user_id))
         elif number.masculine:
-            flashcards.extend(self._generate_one_type_forms(number, dictionary_form))
+            flashcards.extend(self._generate_one_type_forms(number, dictionary_form, user_id))
         else:
             # Create a basic translation card for very irregular numbers
             flashcard = self.create_two_sided_card(
@@ -205,13 +213,14 @@ class NumberGenerator(BaseGenerator):
                 back=number.english_translation,
                 tags=["russian", "number", "special", "translation"],
                 title=f"{dictionary_form} - meaning",
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 
         return flashcards
 
     def _generate_property_flashcards(
-        self, number: Number, dictionary_form: str
+        self, number: Number, dictionary_form: str, user_id: int = 1
     ) -> List[Any]:
         """Generate flashcards for number properties and usage patterns."""
         flashcards = []
@@ -222,6 +231,7 @@ class NumberGenerator(BaseGenerator):
             back=number.english_translation,
             tags=["russian", "number", "translation"],
             title=f"{dictionary_form} - translation",
+            user_id=user_id,
         )
         flashcards.append(flashcard)
 
@@ -238,6 +248,7 @@ class NumberGenerator(BaseGenerator):
                 back=agreement_text,
                 tags=["russian", "number", "agreement", "grammar"],
                 title=f"{dictionary_form} - noun agreement",
+                user_id=user_id,
             )
             flashcards.append(flashcard)
 

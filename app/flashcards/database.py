@@ -93,6 +93,7 @@ class FlashcardDatabaseV2:
 
     def get_flashcards(
         self,
+        user_id: int,
         flashcard_type: Optional[FlashcardType] = None,
         tags: Optional[List[str]] = None,
         due_before: Optional[datetime] = None,
@@ -101,7 +102,7 @@ class FlashcardDatabaseV2:
         """Retrieve flashcards from the database with optional filtering."""
         try:
             # Build query filter
-            query_filter = {}
+            query_filter = {"user_id": user_id}
 
             if flashcard_type:
                 query_filter["type"] = flashcard_type.value
@@ -141,10 +142,10 @@ class FlashcardDatabaseV2:
             logger.error(f"Error retrieving flashcards: {e}")
             return []
 
-    def get_flashcard_by_id(self, flashcard_id: str) -> Optional[FlashcardUnion]:
+    def get_flashcard_by_id(self, flashcard_id: str, user_id: int) -> Optional[FlashcardUnion]:
         """Get a specific flashcard by its ID."""
         try:
-            doc = self.collection.find_one({"_id": ObjectId(flashcard_id)})
+            doc = self.collection.find_one({"_id": ObjectId(flashcard_id), "user_id": user_id})
 
             if doc:
                 # Convert ObjectId to string
@@ -159,14 +160,14 @@ class FlashcardDatabaseV2:
             logger.error(f"Error retrieving flashcard by ID: {e}")
             return None
 
-    def update_flashcard(self, flashcard_id: str, updates: Dict) -> bool:
+    def update_flashcard(self, flashcard_id: str, user_id: int, updates: Dict) -> bool:
         """Update a flashcard with new data."""
         try:
             # Add updated_at timestamp
             updates["updated_at"] = datetime.now()
 
             result = self.collection.update_one(
-                {"_id": ObjectId(flashcard_id)}, {"$set": updates}
+                {"_id": ObjectId(flashcard_id), "user_id": user_id}, {"$set": updates}
             )
 
             if result.modified_count > 0:
@@ -183,6 +184,7 @@ class FlashcardDatabaseV2:
     def update_flashcard_stats(
         self,
         flashcard_id: str,
+        user_id: int,
         is_correct: bool,
         new_due_date: datetime,
         new_interval: int,
@@ -218,7 +220,7 @@ class FlashcardDatabaseV2:
                 update_doc["$inc"] = inc_updates
 
             result = self.collection.update_one(
-                {"_id": ObjectId(flashcard_id)}, update_doc
+                {"_id": ObjectId(flashcard_id), "user_id": user_id}, update_doc
             )
 
             return result.modified_count > 0
@@ -227,10 +229,10 @@ class FlashcardDatabaseV2:
             logger.error(f"Error updating flashcard stats: {e}")
             return False
 
-    def delete_flashcard(self, flashcard_id: str) -> bool:
+    def delete_flashcard(self, flashcard_id: str, user_id: int) -> bool:
         """Delete a flashcard from the database."""
         try:
-            result = self.collection.delete_one({"_id": ObjectId(flashcard_id)})
+            result = self.collection.delete_one({"_id": ObjectId(flashcard_id), "user_id": user_id})
 
             if result.deleted_count > 0:
                 logger.info(f"Deleted flashcard {flashcard_id}")
@@ -244,11 +246,11 @@ class FlashcardDatabaseV2:
             return False
 
     def get_flashcard_count(
-        self, flashcard_type: Optional[FlashcardType] = None
+        self, user_id: int, flashcard_type: Optional[FlashcardType] = None
     ) -> int:
         """Get the total number of flashcards in the database."""
         try:
-            query_filter = {}
+            query_filter = {"user_id": user_id}
             if flashcard_type:
                 query_filter["type"] = flashcard_type.value
 
@@ -261,16 +263,17 @@ class FlashcardDatabaseV2:
             return 0
 
     def get_due_flashcards(
-        self, user_id: Optional[str] = None, limit: int = 20
+        self, user_id: int, limit: int = 20
     ) -> List[FlashcardUnion]:
         """Get flashcards that are due for review."""
         now = datetime.now()
-        return self.get_flashcards(due_before=now, limit=limit)
+        return self.get_flashcards(user_id=user_id, due_before=now, limit=limit)
 
-    def get_tags(self) -> List[str]:
+    def get_tags(self, user_id: int) -> List[str]:
         """Get all unique tags used in flashcards."""
         try:
             pipeline = [
+                {"$match": {"user_id": user_id}},
                 {"$unwind": "$tags"},
                 {"$group": {"_id": "$tags"}},
                 {"$sort": {"_id": 1}},
@@ -286,7 +289,7 @@ class FlashcardDatabaseV2:
             logger.error(f"Error retrieving tags: {e}")
             return []
 
-    def get_dashboard_stats(self) -> Dict[str, int]:
+    def get_dashboard_stats(self, user_id: int) -> Dict[str, int]:
         """Get dashboard statistics for flashcards."""
         try:
             now = datetime.now()
@@ -294,24 +297,24 @@ class FlashcardDatabaseV2:
             week_end = now + timedelta(days=7)
 
             # Total flashcards
-            total_count = self.get_flashcard_count()
+            total_count = self.get_flashcard_count(user_id)
 
             # Due today
             due_today = self.collection.count_documents(
-                {"due_date": {"$lte": today_end}}
+                {"user_id": user_id, "due_date": {"$lte": today_end}}
             )
 
             # Due this week
             due_this_week = self.collection.count_documents(
-                {"due_date": {"$lte": week_end}}
+                {"user_id": user_id, "due_date": {"$lte": week_end}}
             )
 
             # New flashcards (never reviewed)
-            new_cards = self.collection.count_documents({"times_reviewed": 0})
+            new_cards = self.collection.count_documents({"user_id": user_id, "times_reviewed": 0})
 
             # Mastered flashcards (high ease factor and long intervals)
             mastered_cards = self.collection.count_documents(
-                {"ease_factor": {"$gte": 2.5}, "interval_days": {"$gte": 30}}
+                {"user_id": user_id, "ease_factor": {"$gte": 2.5}, "interval_days": {"$gte": 30}}
             )
 
             return {
@@ -332,19 +335,19 @@ class FlashcardDatabaseV2:
                 "mastered": 0,
             }
 
-    def get_recent_activity_stats(self, days: int = 7) -> Dict[str, int]:
+    def get_recent_activity_stats(self, user_id: int, days: int = 7) -> Dict[str, int]:
         """Get recent activity statistics."""
         try:
             cutoff_date = datetime.now() - timedelta(days=days)
 
             # Cards added recently
             recent_additions = self.collection.count_documents(
-                {"created_at": {"$gte": cutoff_date}}
+                {"user_id": user_id, "created_at": {"$gte": cutoff_date}}
             )
 
             # Cards reviewed recently
             recent_reviews = self.collection.count_documents(
-                {"last_reviewed": {"$gte": cutoff_date}}
+                {"user_id": user_id, "last_reviewed": {"$gte": cutoff_date}}
             )
 
             return {
@@ -364,11 +367,12 @@ class FlashcardDatabaseV2:
 
     # Dictionary Word Operations
 
-    def is_word_processed(self, dictionary_form: str, word_type: WordType) -> bool:
+    def is_word_processed(self, user_id: int, dictionary_form: str, word_type: WordType) -> bool:
         """Check if a word with the given dictionary form and type has already been processed."""
         try:
             result = self.dictionary_words_collection.find_one(
                 {
+                    "user_id": user_id,
                     "dictionary_form": dictionary_form.lower().strip(),
                     "word_type": word_type.value,
                 }
@@ -388,6 +392,7 @@ class FlashcardDatabaseV2:
 
     def add_processed_word(
         self,
+        user_id: int,
         dictionary_form: str,
         word_type: WordType,
         flashcards_generated: int = 0,
@@ -396,6 +401,7 @@ class FlashcardDatabaseV2:
         """Add a new processed word to the dictionary."""
         try:
             dictionary_word = DictionaryWord(
+                user_id=user_id,
                 dictionary_form=dictionary_form.lower().strip(),
                 word_type=word_type,
                 flashcards_generated=flashcards_generated,
@@ -423,12 +429,13 @@ class FlashcardDatabaseV2:
             return None
 
     def get_processed_word(
-        self, dictionary_form: str, word_type: WordType
+        self, user_id: int, dictionary_form: str, word_type: WordType
     ) -> Optional[DictionaryWord]:
         """Get a processed word by dictionary form and type."""
         try:
             doc = self.dictionary_words_collection.find_one(
                 {
+                    "user_id": user_id,
                     "dictionary_form": dictionary_form.lower().strip(),
                     "word_type": word_type.value,
                 }
@@ -446,12 +453,13 @@ class FlashcardDatabaseV2:
             return None
 
     def update_processed_word_stats(
-        self, dictionary_form: str, word_type: WordType, additional_flashcards: int = 0
+        self, user_id: int, dictionary_form: str, word_type: WordType, additional_flashcards: int = 0
     ) -> bool:
         """Update statistics for a processed word."""
         try:
             result = self.dictionary_words_collection.update_one(
                 {
+                    "user_id": user_id,
                     "dictionary_form": dictionary_form.lower().strip(),
                     "word_type": word_type.value,
                 },
@@ -467,10 +475,10 @@ class FlashcardDatabaseV2:
             logger.error(f"Error updating processed word stats: {e}")
             return False
 
-    def get_processed_words_count(self) -> int:
+    def get_processed_words_count(self, user_id: int) -> int:
         """Get the total number of processed words."""
         try:
-            count = self.dictionary_words_collection.count_documents({})
+            count = self.dictionary_words_collection.count_documents({"user_id": user_id})
             logger.info(f"Total processed words: {count}")
             return count
 
@@ -479,11 +487,11 @@ class FlashcardDatabaseV2:
             return 0
 
     def get_processed_words_by_type(
-        self, word_type: Optional[WordType] = None, limit: Optional[int] = None
+        self, user_id: int, word_type: Optional[WordType] = None, limit: Optional[int] = None
     ) -> List[DictionaryWord]:
         """Get processed words, optionally filtered by type."""
         try:
-            query_filter = {}
+            query_filter = {"user_id": user_id}
             if word_type:
                 query_filter["word_type"] = word_type.value
 
@@ -511,11 +519,12 @@ class FlashcardDatabaseV2:
             logger.error(f"Error retrieving processed words: {e}")
             return []
 
-    def delete_processed_word(self, dictionary_form: str, word_type: WordType) -> bool:
+    def delete_processed_word(self, user_id: int, dictionary_form: str, word_type: WordType) -> bool:
         """Delete a processed word (useful for reprocessing)."""
         try:
             result = self.dictionary_words_collection.delete_one(
                 {
+                    "user_id": user_id,
                     "dictionary_form": dictionary_form.lower().strip(),
                     "word_type": word_type.value,
                 }
@@ -536,28 +545,29 @@ class FlashcardDatabaseV2:
             logger.error(f"Error deleting processed word: {e}")
             return False
 
-    def get_dictionary_stats(self) -> Dict[str, int]:
+    def get_dictionary_stats(self, user_id: int) -> Dict[str, int]:
         """Get statistics about processed dictionary words."""
         try:
             # Total processed words
-            total = self.get_processed_words_count()
+            total = self.get_processed_words_count(user_id)
 
             # Words by type
             type_stats = {}
             for word_type in WordType:
                 count = self.dictionary_words_collection.count_documents(
-                    {"word_type": word_type.value}
+                    {"user_id": user_id, "word_type": word_type.value}
                 )
                 type_stats[word_type.value] = count
 
             # Recent words (last 7 days)
             recent_cutoff = datetime.now() - timedelta(days=7)
             recent_count = self.dictionary_words_collection.count_documents(
-                {"processed_date": {"$gte": recent_cutoff}}
+                {"user_id": user_id, "processed_date": {"$gte": recent_cutoff}}
             )
 
             # Total flashcards generated from all words
             pipeline = [
+                {"$match": {"user_id": user_id}},
                 {
                     "$group": {
                         "_id": None,

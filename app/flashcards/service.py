@@ -23,17 +23,17 @@ class FlashcardService:
         self.spaced_repetition = SpacedRepetitionAlgorithm()
         self.scheduler = ReviewScheduler()
 
-    def get_learning_session_flashcards(self, limit: int = 20) -> List[FlashcardUnion]:
+    def get_learning_session_flashcards(self, user_id: int, limit: int = 20) -> List[FlashcardUnion]:
         """Get flashcards for a learning session."""
         try:
             # Get due flashcards first
-            due_cards = self.db.get_due_flashcards(limit=limit)
+            due_cards = self.db.get_due_flashcards(user_id=user_id, limit=limit)
 
             # If we don't have enough due cards, get some random ones
             if len(due_cards) < limit:
                 remaining = limit - len(due_cards)
                 all_cards = self.db.get_flashcards(
-                    limit=remaining * 2
+                    user_id=user_id, limit=remaining * 2
                 )  # Get more to filter out due ones
 
                 # Filter out cards that are already in due_cards
@@ -73,7 +73,7 @@ class FlashcardService:
         return self.answer_validator.check_answer(flashcard, user_input)
 
     def update_flashcard_after_review(
-        self, flashcard: FlashcardUnion, is_correct: bool
+        self, user_id: int, flashcard: FlashcardUnion, is_correct: bool
     ) -> bool:
         """Update flashcard statistics and spaced repetition data after review."""
         try:
@@ -88,27 +88,27 @@ class FlashcardService:
 
             # Update in database
             return self.db.update_flashcard_stats(
-                flashcard.id, is_correct, new_due_date, new_interval, new_ease_factor
+                flashcard.id, user_id, is_correct, new_due_date, new_interval, new_ease_factor
             )
 
         except Exception as e:
             logger.error(f"Error updating flashcard after review: {e}")
             return False
 
-    def get_flashcard_stats(self) -> Dict[str, Any]:
+    def get_flashcard_stats(self, user_id: int) -> Dict[str, Any]:
         """Get statistics about the flashcard collection."""
         try:
-            total_count = self.db.get_flashcard_count()
-            two_sided_count = self.db.get_flashcard_count(FlashcardType.TWO_SIDED)
-            fill_blank_count = self.db.get_flashcard_count(FlashcardType.FILL_IN_BLANK)
+            total_count = self.db.get_flashcard_count(user_id)
+            two_sided_count = self.db.get_flashcard_count(user_id, FlashcardType.TWO_SIDED)
+            fill_blank_count = self.db.get_flashcard_count(user_id, FlashcardType.FILL_IN_BLANK)
             multiple_choice_count = self.db.get_flashcard_count(
-                FlashcardType.MULTIPLE_CHOICE
+                user_id, FlashcardType.MULTIPLE_CHOICE
             )
 
             due_count = len(
-                self.db.get_due_flashcards(limit=1000)
+                self.db.get_due_flashcards(user_id=user_id, limit=1000)
             )  # Get a large number to count
-            tags = self.db.get_tags()
+            tags = self.db.get_tags(user_id)
 
             return {
                 "total": total_count,
@@ -124,14 +124,14 @@ class FlashcardService:
             logger.error(f"Error getting flashcard stats: {e}")
             return {}
 
-    def get_dashboard_data(self) -> Dict[str, Any]:
+    def get_dashboard_data(self, user_id: int) -> Dict[str, Any]:
         """Get comprehensive dashboard data for the bot."""
         try:
             # Get basic dashboard stats
-            dashboard_stats = self.db.get_dashboard_stats()
+            dashboard_stats = self.db.get_dashboard_stats(user_id)
 
             # Get recent activity
-            recent_activity = self.db.get_recent_activity_stats(days=7)
+            recent_activity = self.db.get_recent_activity_stats(user_id, days=7)
 
             # Combine data
             dashboard_data = {**dashboard_stats, **recent_activity}

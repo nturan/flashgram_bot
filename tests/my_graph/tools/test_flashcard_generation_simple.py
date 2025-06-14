@@ -17,7 +17,7 @@ class TestFlashcardGenerationSimple:
         with patch('app.my_graph.tools.flashcard_generation.flashcard_generator') as mock_fg, \
              patch('app.my_graph.tools.flashcard_generation.flashcard_service') as mock_fs:
             
-            mock_flashcards = [TwoSidedCard(front="дом", back="house", word_type=WordType.NOUN)]
+            mock_flashcards = [TwoSidedCard(user_id=1, front="дом", back="house", word_type=WordType.NOUN)]
             mock_fg.generate_flashcards_from_grammar.return_value = mock_flashcards
             mock_fg.save_flashcards_to_database.return_value = 1
             mock_fs.db.get_processed_word.return_value = None
@@ -35,7 +35,7 @@ class TestFlashcardGenerationSimple:
                 }
             }
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is True
             assert result["flashcards_generated"] == 1
@@ -59,7 +59,7 @@ class TestFlashcardGenerationSimple:
                 }
             }
             
-            result = generate_flashcards_from_analysis_impl(analysis_data)
+            result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
             
             assert result["success"] is False
             assert result["flashcards_generated"] == 0
@@ -67,7 +67,7 @@ class TestFlashcardGenerationSimple:
 
     def test_generate_flashcards_from_analysis_no_data(self):
         """Test handling of missing analysis data."""
-        result = generate_flashcards_from_analysis_impl(None)
+        result = generate_flashcards_from_analysis_impl(None, user_id=1)
         
         assert result["success"] is False
         assert result["flashcards_generated"] == 0
@@ -84,7 +84,7 @@ class TestFlashcardGenerationSimple:
             }
         }
         
-        result = generate_flashcards_from_analysis_impl(analysis_data)
+        result = generate_flashcards_from_analysis_impl(analysis_data, user_id=1)
         
         assert result["success"] is False
         assert result["flashcards_generated"] == 0

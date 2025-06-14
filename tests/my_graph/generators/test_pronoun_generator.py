@@ -244,7 +244,7 @@ class TestPronounGenerator:
             
             # Should delegate to noun-like forms
             assert len(flashcards) == 1
-            mock_noun_like.assert_called_once_with(special_with_singular, "что")
+            mock_noun_like.assert_called_once_with(special_with_singular, "что", 1)
 
     def test_generate_special_forms_with_gender(self):
         """Test special forms when gender forms are available."""
@@ -265,7 +265,7 @@ class TestPronounGenerator:
             
             # Should delegate to adjective-like forms
             assert len(flashcards) == 1
-            mock_adj_like.assert_called_once_with(special_with_gender, "какой")
+            mock_adj_like.assert_called_once_with(special_with_gender, "какой", 1)
 
     def test_generate_special_forms_irregular(self, special_pronoun):
         """Test special forms for truly irregular pronouns."""
