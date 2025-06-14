@@ -70,20 +70,27 @@ class ConversationalRussianTutor:
 
         # System message for the chatbot
         self.system_message = SystemMessage(
-            content="""You are a helpful Russian language tutor assistant. You can help users:
+            content="""You are a helpful Russian language tutor assistant powered by PyMorphy2 dictionary-based analysis. You can help users:
 
-1. **Analyze Russian grammar** - Break down words and explain their grammatical forms
+1. **Analyze Russian grammar** - Break down words and explain their grammatical forms using precise morphological analysis
 2. **Correct mistakes** - Fix mixed-language text and grammatical errors  
 3. **Generate flashcards** - Create targeted practice cards based on analysis or mistakes
 4. **Process bulk text** - Handle large texts, paragraphs, or multiple sentences asynchronously
 5. **Translate phrases** - Help with translations between Russian, English, and German
 6. **Generate example sentences** - Create contextual examples for grammar practice
 
+**Your analysis capabilities:**
+- Currently supports **nouns** with full declension patterns, gender, and animacy analysis
+- Uses PyMorphy2 dictionary for accurate morphological analysis
+- Only analyzes words found in the Russian dictionary (language learning focus)
+- Verbs, adjectives, pronouns, and numbers will be supported in future updates
+
 **Your personality:**
 - Encouraging and patient with learners
-- Explain grammar concepts clearly
+- Explain grammar concepts clearly using dictionary-based insights
 - Ask clarifying questions when needed
 - Offer to create flashcards when it would help learning
+- Be transparent about current limitations (nouns only for now)
 - Respond naturally in conversation
 
 **When to use tools:**
@@ -290,10 +297,14 @@ Always explain what you're doing and ask for user confirmation before creating f
             # If there was an OpenAI API error, we need to be careful about message state
             current_messages = state.get("messages", [])
 
-            # Check if the last message has tool calls that might be causing issues
-            if current_messages and hasattr(current_messages[-1], "tool_calls"):
-                # Remove the problematic message that caused the error
-                current_messages = current_messages[:-1]
+            # Check if the error is about tool messages without tool calls
+            if "tool" in str(e).lower() and "tool_calls" in str(e).lower():
+                # Remove any problematic tool messages
+                filtered_messages = []
+                for msg in current_messages:
+                    if not isinstance(msg, ToolMessage):
+                        filtered_messages.append(msg)
+                current_messages = filtered_messages
 
             error_message = AIMessage(
                 content="I encountered an error. Please try again."

@@ -103,7 +103,8 @@ class BulkTextProcessor:
                         if analysis_result.get("success"):
                             # Generate flashcards
                             flashcard_result = generate_flashcards_from_analysis_impl(
-                                analysis_data=analysis_result
+                                analysis_data=analysis_result,
+                                user_id=job.user_id
                             )
 
                             if flashcard_result.get("success"):
@@ -133,12 +134,24 @@ class BulkTextProcessor:
                                     }
                                 )
                         else:
-                            logger.warning(
-                                f"Job {job.job_id}: Failed to analyze word '{word}': {analysis_result.get('error')}"
-                            )
-                            job.failed_words.append(
-                                {"word": word, "error": "analysis_failed"}
-                            )
+                            # Check if this is a skip case rather than a failure
+                            skip_reason = analysis_result.get("analysis", {}).get("skip_reason")
+                            if not skip_reason:
+                                # Also check if skip_reason is directly in analysis_result
+                                skip_reason = analysis_result.get("skip_reason")
+                            
+                            if skip_reason:
+                                logger.info(
+                                    f"Job {job.job_id}: Skipping word '{word}': {analysis_result.get('message', analysis_result.get('analysis', {}).get('message', 'Unknown skip reason'))}"
+                                )
+                                # Don't add skipped words to failed_words - they're intentionally skipped
+                            else:
+                                logger.warning(
+                                    f"Job {job.job_id}: Failed to analyze word '{word}': {analysis_result.get('error') or analysis_result.get('analysis', {}).get('message', 'Unknown error')}"
+                                )
+                                job.failed_words.append(
+                                    {"word": word, "error": "analysis_failed"}
+                                )
 
                     except Exception as e:
                         logger.error(
