@@ -1,7 +1,7 @@
 """Flashcard service using Beanie ODM."""
 
 import logging
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Union
 from datetime import datetime, timedelta
 from beanie import PydanticObjectId
 
@@ -32,9 +32,13 @@ class FlashcardService:
             logger.error(f"Error creating flashcard: {e}")
             return None
 
-    async def get_flashcard_by_id(self, flashcard_id: PydanticObjectId, user_id: int) -> Optional[Flashcard]:
+    async def get_flashcard_by_id(self, flashcard_id: Union[str, PydanticObjectId], user_id: int) -> Optional[Flashcard]:
         """Get a flashcard by ID for a specific user."""
         try:
+            # Convert string ID to PydanticObjectId if needed
+            if isinstance(flashcard_id, str):
+                flashcard_id = PydanticObjectId(flashcard_id)
+            
             flashcard = await Flashcard.find_one(
                 Flashcard.id == flashcard_id,
                 Flashcard.user_id == user_id
@@ -89,7 +93,7 @@ class FlashcardService:
 
     async def update_flashcard(
         self, 
-        flashcard_id: PydanticObjectId, 
+        flashcard_id: Union[str, PydanticObjectId], 
         user_id: int, 
         updates: Dict[str, Any]
     ) -> bool:
@@ -114,7 +118,7 @@ class FlashcardService:
             logger.error(f"Error updating flashcard: {e}")
             return False
 
-    async def delete_flashcard(self, flashcard_id: PydanticObjectId, user_id: int) -> bool:
+    async def delete_flashcard(self, flashcard_id: Union[str, PydanticObjectId], user_id: int) -> bool:
         """Delete a flashcard."""
         try:
             flashcard = await self.get_flashcard_by_id(flashcard_id, user_id)
