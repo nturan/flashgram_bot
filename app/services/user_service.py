@@ -3,6 +3,7 @@
 import logging
 from typing import Optional
 from app.models.users import User, UserStatus
+from app.common.encryption import get_encryption_manager
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,18 @@ class UserService:
         except Exception as e:
             logger.error(f"Error updating user API key: {e}")
             return False
+
+    async def get_user_api_key(self, telegram_user_id: int) -> Optional[str]:
+        """Get user's decrypted API key."""
+        try:
+            user = await self.get_user_by_telegram_id(telegram_user_id)
+            if user and user.has_custom_api_key():
+                encryption_manager = get_encryption_manager()
+                return encryption_manager.decrypt_api_key(user.encrypted_openai_api_key)
+            return None
+        except Exception as e:
+            logger.error(f"Error getting user API key: {e}")
+            return None
 
     async def update_user_status(self, telegram_user_id: int, status: UserStatus) -> bool:
         """Update user's status."""

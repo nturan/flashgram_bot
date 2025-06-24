@@ -8,6 +8,8 @@ from app.flashcards import flashcard_service
 from app.common.telegram_utils import safe_send_markdown
 from app.models.words import WordType
 from app.my_telegram.session.config_manager import config_manager
+from app.services.user_service import user_service
+from app.common.encryption import get_encryption_manager
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +19,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     user_id = user.id
     
-    # Check if user has an API key configured
-    api_key = config_manager.get_setting(user_id, "openai_api_key")
+    # Check if user has an API key configured (check both persistent and config)
+    api_key = await user_service.get_user_api_key(user_id)
+    if not api_key:
+        api_key = config_manager.get_setting(user_id, "openai_api_key")
     
     if not api_key:
         # New user onboarding flow
@@ -363,6 +367,50 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         value_str = args[1]
 
         try:
+            # Handle API key setting specially - store in persistent user document
+            if setting_name == "openai_api_key":
+                # Validate API key format
+                api_key = value_str.strip()
+                if not (api_key.startswith("sk-") and len(api_key) > 20):
+                    response = "❌ *Invalid API Key Format*\n\n"
+                    response += "OpenAI API keys should start with 'sk-' and be longer than 20 characters."
+                    await safe_send_markdown(update, response)
+                    return
+                
+                # Get or create user first
+                user = await user_service.get_or_create_user(
+                    telegram_user_id=user_id,
+                    username=update.effective_user.username,
+                    first_name=update.effective_user.first_name,
+                    last_name=update.effective_user.last_name
+                )
+                
+                if not user:
+                    await update.message.reply_text("❌ Error creating user record. Please try again later.")
+                    return
+                
+                # Encrypt and store API key
+                encryption_manager = get_encryption_manager()
+                encrypted_api_key = encryption_manager.encrypt_api_key(api_key)
+                success = await user_service.update_user_api_key(user_id, encrypted_api_key)
+                
+                if success:
+                    # Also update config_manager for backward compatibility
+                    config_manager.update_setting(user_id, setting_name, api_key)
+                    
+                    # Clear user's chatbot so it gets recreated with new API key
+                    from .chatbot_handlers import clear_user_chatbot
+                    clear_user_chatbot(user_id)
+                    
+                    response = "✅ *API Key Updated*\n\n"
+                    response += "🔒 Your API key has been encrypted and stored securely.\n"
+                    response += "🔄 Chatbot has been reset to use your new API key."
+                    await safe_send_markdown(update, response)
+                else:
+                    await update.message.reply_text("❌ Error storing API key. Please try again later.")
+                return
+            
+            # Handle other settings normally
             # Handle boolean values
             if setting_name == "confirm_flashcards":
                 value = value_str.lower() in ["true", "yes", "1", "on"]
@@ -372,16 +420,14 @@ async def configure_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             success = config_manager.update_setting(user_id, setting_name, value)
 
             if success:
-                # If model or API key was updated, clear user's chatbot for recreation
-                if setting_name in ["model", "openai_api_key"]:
+                # If model was updated, clear user's chatbot for recreation
+                if setting_name == "model":
                     from app.my_graph.sentence_generation.llm_sentence_generator import (
                         reinit_sentence_generator_llm,
                     )
                     from .chatbot_handlers import clear_user_chatbot
 
-                    if setting_name == "model":
-                        reinit_sentence_generator_llm(value)
-                    
+                    reinit_sentence_generator_llm(value)
                     # Clear user's chatbot so it gets recreated with new settings
                     clear_user_chatbot(user_id)
 
@@ -430,7 +476,9 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_user.id
 
     # Check if user has API key configured (needed for chatbot)
-    api_key = config_manager.get_setting(user_id, "openai_api_key")
+    api_key = await user_service.get_user_api_key(user_id)
+    if not api_key:
+        api_key = config_manager.get_setting(user_id, "openai_api_key")
 
     if api_key:
         from .chatbot_handlers import clear_chatbot_conversation

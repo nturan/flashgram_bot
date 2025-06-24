@@ -11,6 +11,7 @@ from app.my_graph.chatbot_tutor import ConversationalRussianTutor
 from app.common.telegram_utils import safe_send_markdown
 from .learning_handlers import process_answer
 from app.config import settings
+from app.services.user_service import user_service
 from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
@@ -19,10 +20,14 @@ logger = logging.getLogger(__name__)
 user_chatbots: dict[int, ConversationalRussianTutor] = {}
 
 
-def get_user_chatbot(user_id: int) -> ConversationalRussianTutor:
+async def get_user_chatbot(user_id: int) -> ConversationalRussianTutor:
     """Get or create a chatbot instance for a specific user."""
-    # Check if user has an API key configured
-    api_key = config_manager.get_setting(user_id, "openai_api_key")
+    # Check if user has an API key configured (check persistent storage first)
+    api_key = await user_service.get_user_api_key(user_id)
+    if not api_key:
+        # Fall back to config_manager for backward compatibility
+        api_key = config_manager.get_setting(user_id, "openai_api_key")
+    
     if not api_key:
         raise ValueError("User has no API key configured")
     
@@ -122,7 +127,7 @@ async def process_chatbot_conversation(
     try:
         # Get or create user-specific chatbot
         try:
-            chatbot_tutor = get_user_chatbot(user_id)
+            chatbot_tutor = await get_user_chatbot(user_id)
         except ValueError as e:
             # User has no API key configured
             await update.message.reply_text(
@@ -187,17 +192,27 @@ async def handle_chatbot_feedback(
     update: Update, context: ContextTypes.DEFAULT_TYPE, feedback: str
 ) -> None:
     """Handle user feedback about chatbot responses or generated content."""
+    user_id = update.effective_user.id
     user_text = f"User feedback: {feedback}. Please adjust accordingly."
 
-    # Process feedback through chatbot
-    result = chatbot_tutor.chat(user_text)
+    try:
+        # Get user-specific chatbot
+        chatbot_tutor = await get_user_chatbot(user_id)
+        
+        # Process feedback through chatbot
+        result = await chatbot_tutor.chat(user_text, user_id=user_id)
 
-    if result.get("success"):
-        response = result.get("response", "Thank you for the feedback!")
-        await safe_send_markdown(update, response)
-    else:
+        if result.get("success"):
+            response = result.get("response", "Thank you for the feedback!")
+            await safe_send_markdown(update, response)
+        else:
+            await update.message.reply_text(
+                "Thank you for the feedback. I'll try to improve."
+            )
+    except ValueError:
+        # User has no API key configured
         await update.message.reply_text(
-            "Thank you for the feedback. I'll try to improve."
+            "❌ Please configure your API key first using `/configure openai_api_key sk-your-key-here`"
         )
 
 
