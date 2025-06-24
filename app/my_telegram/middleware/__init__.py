@@ -1,0 +1,1 @@
+"""Middleware package for Telegram bot lifecycle management."""
