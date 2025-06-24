@@ -3,14 +3,12 @@
 from .users import User, UserStatus
 from .words import Word, WordType
 from .flashcards import (
-    BaseFlashcard,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
+    Flashcard,
     FlashcardType,
     DifficultyLevel,
-    FlashcardUnion,
-    create_flashcard_from_dict
+    create_two_sided_card,
+    create_fill_in_blank_card,
+    create_multiple_choice_card
 )
 
 __all__ = [
@@ -21,12 +19,10 @@ __all__ = [
     "Word",
     "WordType",
     # Flashcards
-    "BaseFlashcard",
-    "TwoSidedCard", 
-    "FillInTheBlank",
-    "MultipleChoice",
+    "Flashcard",
     "FlashcardType",
     "DifficultyLevel",
-    "FlashcardUnion",
-    "create_flashcard_from_dict"
+    "create_two_sided_card",
+    "create_fill_in_blank_card",
+    "create_multiple_choice_card"
 ]

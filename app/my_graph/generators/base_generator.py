@@ -2,8 +2,12 @@
 
 import logging
 from typing import List, Any
-from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
-from app.my_graph.sentence_generation import LLMSentenceGenerator, TextProcessor
+from app.models.flashcards import (
+    Flashcard,
+    create_fill_in_blank_card,
+    create_two_sided_card,
+    create_multiple_choice_card
+)
 from app.my_graph.utils import SuffixExtractor, FormAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -13,8 +17,6 @@ class BaseGenerator:
     """Base class for word-type specific flashcard generators."""
 
     def __init__(self):
-        self.sentence_generator = LLMSentenceGenerator()
-        self.text_processor = TextProcessor()
         self.suffix_extractor = SuffixExtractor()
         self.form_analyzer = FormAnalyzer()
 
@@ -28,29 +30,27 @@ class BaseGenerator:
         grammatical_key: str = None,
         pre_generated_sentence: str = None,
         user_id: int = 1,
-    ) -> FillInTheBlank:
+    ) -> Flashcard:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
-
-        # Use pre-generated sentence if available, otherwise generate new one
-        if pre_generated_sentence:
-            sentence = pre_generated_sentence
+        
+        # Only create cards if we have a pre-generated sentence
+        # LLM sentence generation has been removed from grammar analysis
+        if not pre_generated_sentence:
+            logger.warning(f"No pre-generated sentence available for {dictionary_form} - {form_description}")
+            # Create a simple template sentence as fallback
+            sentence = f"Пример с {target_form}."
         else:
-            # Generate example sentence
-            sentence = self.sentence_generator.generate_example_sentence(
-                dictionary_form, target_form, form_description, word_type
-            )
+            sentence = pre_generated_sentence
 
         # Extract stem and suffix
         stem, suffix = self.suffix_extractor.extract_suffix(
             dictionary_form, target_form
         )
 
-        # Create the sentence with masked suffix
-        sentence_with_blank = self.text_processor.create_sentence_with_blank(
-            sentence, target_form, stem
-        )
+        # Create the sentence with masked suffix - simple text replacement
+        sentence_with_blank = sentence.replace(target_form, f"{stem}___")
 
-        return FillInTheBlank(
+        return create_fill_in_blank_card(
             user_id=user_id,
             text_with_blanks=sentence_with_blank,
             answers=[suffix],
@@ -67,9 +67,9 @@ class BaseGenerator:
 
     def create_two_sided_card(
         self, front: str, back: str, tags: List[str], title: str, user_id: int = 1
-    ) -> TwoSidedCard:
+    ) -> Flashcard:
         """Create a two-sided flashcard."""
-        return TwoSidedCard(user_id=user_id, front=front, back=back, tags=tags, title=title)
+        return create_two_sided_card(user_id=user_id, front=front, back=back, tags=tags, title=title)
 
     def create_multiple_choice_card(
         self,
@@ -80,9 +80,9 @@ class BaseGenerator:
         title: str,
         allow_multiple: bool = False,
         user_id: int = 1,
-    ) -> MultipleChoice:
+    ) -> Flashcard:
         """Create a multiple choice flashcard."""
-        return MultipleChoice(
+        return create_multiple_choice_card(
             user_id=user_id,
             question=question,
             options=options,

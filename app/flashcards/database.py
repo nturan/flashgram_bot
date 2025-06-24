@@ -7,12 +7,11 @@ from datetime import datetime, timedelta
 
 from app.config import settings
 from app.models.flashcards import (
-    FlashcardUnion,
+    Flashcard,
     FlashcardType,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
-    create_flashcard_from_dict,
+    create_two_sided_card,
+    create_fill_in_blank_card,
+    create_multiple_choice_card,
 )
 from app.models.words import Word, WordType
 
@@ -66,7 +65,7 @@ class FlashcardDatabaseV2:
             logger.error(f"Unexpected error connecting to MongoDB: {e}")
             raise
 
-    def add_flashcard(self, flashcard: FlashcardUnion) -> Optional[str]:
+    def add_flashcard(self, flashcard: Flashcard) -> Optional[str]:
         """Add a new flashcard to the database."""
         try:
             # Convert Pydantic model to dict
@@ -97,7 +96,7 @@ class FlashcardDatabaseV2:
         tags: Optional[List[str]] = None,
         due_before: Optional[datetime] = None,
         limit: Optional[int] = None,
-    ) -> List[FlashcardUnion]:
+    ) -> List[Flashcard]:
         """Retrieve flashcards from the database with optional filtering."""
         try:
             # Build query filter
@@ -141,7 +140,7 @@ class FlashcardDatabaseV2:
             logger.error(f"Error retrieving flashcards: {e}")
             return []
 
-    def get_flashcard_by_id(self, flashcard_id: str, user_id: int) -> Optional[FlashcardUnion]:
+    def get_flashcard_by_id(self, flashcard_id: str, user_id: int) -> Optional[Flashcard]:
         """Get a specific flashcard by its ID."""
         try:
             doc = self.collection.find_one({"_id": ObjectId(flashcard_id), "user_id": user_id})
@@ -263,7 +262,7 @@ class FlashcardDatabaseV2:
 
     def get_due_flashcards(
         self, user_id: int, limit: int = 20
-    ) -> List[FlashcardUnion]:
+    ) -> List[Flashcard]:
         """Get flashcards that are due for review."""
         now = datetime.now()
         return self.get_flashcards(user_id=user_id, due_before=now, limit=limit)

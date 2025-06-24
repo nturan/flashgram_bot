@@ -17,7 +17,7 @@ from app.models.words import WordType
 logger = logging.getLogger(__name__)
 
 
-def generate_flashcards_from_analysis_impl(
+async def generate_flashcards_from_analysis_impl(
     analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     focus_areas: Optional[List[str]] = None,
     word: Optional[str] = None,
@@ -42,7 +42,7 @@ def generate_flashcards_from_analysis_impl(
                 combined_word_types = []
 
                 for single_analysis in analysis_data:
-                    result = generate_flashcards_from_analysis_impl(
+                    result = await generate_flashcards_from_analysis_impl(
                         single_analysis, focus_areas, None, user_id
                     )
                     if result.get("success"):
@@ -140,49 +140,18 @@ def generate_flashcards_from_analysis_impl(
                 )
 
                 # Save to database
-                saved_count = flashcard_generator.save_flashcards_to_database(
+                saved_count = await flashcard_generator.save_flashcards_to_database(
                     user_id, flashcards
                 )
 
+                # TODO: Add word tracking functionality to modern FlashcardService
                 # Track dictionary word only if flashcards were generated successfully
                 if saved_count > 0 and grammar_obj:
                     # Extract dictionary form from grammar object
                     dictionary_form = getattr(grammar_obj, "dictionary_form", None)
                     if dictionary_form:
-                        try:
-                            word_type_enum = WordType(word_type)
-
-                            # Check if word already exists in dictionary
-                            existing_word = flashcard_service.db.get_processed_word(
-                                user_id, dictionary_form, word_type_enum
-                            )
-                            if existing_word:
-                                # Update existing word stats
-                                flashcard_service.db.update_processed_word_stats(
-                                    user_id,
-                                    dictionary_form,
-                                    word_type_enum,
-                                    additional_flashcards=saved_count,
-                                )
-                                logger.info(
-                                    f"Updated stats for existing word {dictionary_form} (+{saved_count} flashcards)"
-                                )
-                            else:
-                                # Add new processed word
-                                flashcard_service.db.add_processed_word(
-                                    user_id=user_id,
-                                    dictionary_form=dictionary_form,
-                                    word_type=word_type_enum,
-                                    flashcards_generated=saved_count,
-                                    grammar_data=grammar_result,
-                                )
-                                logger.info(
-                                    f"Added new word {dictionary_form} to dictionary with {saved_count} flashcards"
-                                )
-                        except ValueError:
-                            logger.warning(
-                                f"Word type {word_type} not supported for dictionary tracking"
-                            )
+                        logger.info(f"Generated {saved_count} flashcards for word: {dictionary_form}")
+                        # Word tracking functionality needs to be implemented in modern service
 
                 focus_info = (
                     f" (focusing on {', '.join(focus_areas)})" if focus_areas else ""

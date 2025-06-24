@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app.my_graph.generators.pronoun_generator import PronounGenerator
 from app.grammar.russian import Pronoun
-from app.models.flashcards import FillInTheBlank, TwoSidedCard
+from app.models.flashcards import Flashcard, FlashcardType, create_fill_in_blank_card, create_two_sided_card
 
 
 class TestPronounGenerator:

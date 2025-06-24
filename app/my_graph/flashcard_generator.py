@@ -75,7 +75,7 @@ class FlashcardGenerator:
 
         return flashcards
 
-    def save_flashcards_to_database(self, user_id: int, flashcards: List[Any]) -> int:
+    async def save_flashcards_to_database(self, user_id: int, flashcards: List[Any]) -> int:
         """
         Save generated flashcards to the database.
 
@@ -92,7 +92,7 @@ class FlashcardGenerator:
                 # Set user_id on the flashcard
                 flashcard.user_id = user_id
                 
-                flashcard_id = self.service.db.add_flashcard(flashcard)
+                flashcard_id = await self.service.create_flashcard(flashcard)
                 if flashcard_id:
                     saved_count += 1
                     logger.info(f"Saved flashcard: {flashcard.title}")

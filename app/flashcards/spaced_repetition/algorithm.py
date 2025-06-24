@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Tuple
-from app.models.flashcards import FlashcardUnion
+from app.models.flashcards import Flashcard
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class SpacedRepetitionAlgorithm:
     """Implements a simplified SM-2 spaced repetition algorithm."""
 
     def calculate_next_review(
-        self, flashcard: FlashcardUnion, is_correct: bool
+        self, flashcard: Flashcard, is_correct: bool
     ) -> Tuple[datetime, int, float]:
         """
         Calculate the next review date, interval, and ease factor for a flashcard.

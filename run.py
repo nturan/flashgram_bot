@@ -8,6 +8,7 @@ Make sure your PYTHONPATH includes the project root directory.
 import sys
 import os
 import threading
+import asyncio
 
 # Add the project root to the Python path if needed
 project_root = os.path.dirname(os.path.abspath(__file__))

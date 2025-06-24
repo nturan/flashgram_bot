@@ -102,7 +102,7 @@ class BulkTextProcessor:
 
                         if analysis_result.get("success"):
                             # Generate flashcards
-                            flashcard_result = generate_flashcards_from_analysis_impl(
+                            flashcard_result = await generate_flashcards_from_analysis_impl(
                                 analysis_data=analysis_result,
                                 user_id=job.user_id
                             )

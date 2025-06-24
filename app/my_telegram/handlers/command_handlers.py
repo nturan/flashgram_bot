@@ -97,7 +97,7 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     try:
         # Get dashboard data
-        dashboard_data = flashcard_service.get_dashboard_data(user_id)
+        dashboard_data = await flashcard_service.get_dashboard_data(user_id)
 
         if not dashboard_data:
             await update.message.reply_text(
@@ -198,7 +198,7 @@ async def dbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     try:
         # Get flashcard statistics
-        stats = flashcard_service.get_flashcard_stats(user_id)
+        stats = await flashcard_service.get_flashcard_stats(user_id)
 
         if stats:
             tags_str = ", ".join(stats.get("tags", [])[:5])  # Show first 5 tags
@@ -243,11 +243,17 @@ async def dictionary_command(
     user_id = update.effective_user.id
 
     try:
-        # Get dictionary statistics
-        dict_stats = flashcard_service.db.get_dictionary_stats(user_id)
-
-        # Get recent processed words (last 10)
-        recent_words = flashcard_service.db.get_processed_words_by_type(user_id, limit=10)
+        # TODO: Implement word tracking in modern FlashcardService
+        # For now, provide basic flashcard stats instead
+        flashcard_stats = await flashcard_service.get_flashcard_stats(user_id)
+        
+        # Temporary fallback until word tracking is implemented
+        dict_stats = {
+            'total_words': 0,
+            'recent_words': 0,
+            'total_flashcards_from_words': flashcard_stats.get('total', 0)
+        }
+        recent_words = []
 
         # Build response
         response = "📖 *Dictionary Statistics*\n\n"

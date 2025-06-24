@@ -120,27 +120,23 @@ async def process_flashcard_edit(
             return
 
         # Import here to avoid circular imports
-        from app.flashcards import (
-            flashcard_service,
-            TwoSidedCard,
-            FillInTheBlank,
-            MultipleChoice,
-        )
+        from app.flashcards import flashcard_service
+        from app.models.flashcards import Flashcard, FlashcardType
 
         # Get the current flashcard to determine type and validate accordingly
-        current_flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
+        current_flashcard = await flashcard_service.get_flashcard_by_id(flashcard_id, user_id)
         if not current_flashcard:
             await update.message.reply_text("❌ Error: Flashcard not found.")
             return
 
         # Basic validation based on current flashcard type
-        if isinstance(current_flashcard, TwoSidedCard):
+        if current_flashcard.type == FlashcardType.TWO_SIDED:
             if not updated_data.get("front") or not updated_data.get("back"):
                 await update.message.reply_text(
                     "❌ Error: Two-sided cards need 'front' and 'back' fields."
                 )
                 return
-        elif isinstance(current_flashcard, FillInTheBlank):
+        elif current_flashcard.type == FlashcardType.FILL_IN_BLANK:
             if not updated_data.get("text_with_blanks") or not updated_data.get(
                 "answers"
             ):
@@ -148,7 +144,7 @@ async def process_flashcard_edit(
                     "❌ Error: Fill-in-blank cards need 'text_with_blanks' and 'answers' fields."
                 )
                 return
-        elif isinstance(current_flashcard, MultipleChoice):
+        elif current_flashcard.type == FlashcardType.MULTIPLE_CHOICE:
             if (
                 not updated_data.get("question")
                 or not updated_data.get("options")
@@ -160,7 +156,7 @@ async def process_flashcard_edit(
                 return
 
         # Update the flashcard in database
-        success = flashcard_service.db.update_flashcard(flashcard_id, user_id, updated_data)
+        success = await flashcard_service.update_flashcard(flashcard_id, user_id, updated_data)
 
         if success:
             # Clear editing mode FIRST
@@ -179,7 +175,7 @@ async def process_flashcard_edit(
             # If in learning mode, continue with the updated flashcard
             if session.learning_mode:
                 # Get the updated flashcard
-                updated_flashcard = flashcard_service.db.get_flashcard_by_id(
+                updated_flashcard = await flashcard_service.get_flashcard_by_id(
                     flashcard_id, user_id
                 )
                 if (

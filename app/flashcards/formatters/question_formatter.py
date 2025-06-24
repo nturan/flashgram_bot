@@ -2,12 +2,7 @@
 
 import logging
 from typing import Tuple, Optional, Any
-from app.models.flashcards import (
-    FlashcardUnion,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
-)
+from app.models.flashcards import Flashcard, FlashcardType
 from app.common.text_processing import escape_markdown
 from .keyboard_builder import KeyboardBuilder
 
@@ -21,18 +16,18 @@ class QuestionFormatter:
         self.keyboard_builder = KeyboardBuilder()
 
     def format_question_for_bot(
-        self, flashcard: FlashcardUnion
+        self, flashcard: Flashcard
     ) -> Tuple[str, Optional[Any]]:
         """Format a flashcard question for display in the Telegram bot.
         Returns (question_text, optional_keyboard)"""
         try:
-            if isinstance(flashcard, TwoSidedCard):
+            if flashcard.type == FlashcardType.TWO_SIDED:
                 return self._format_two_sided_card(flashcard)
 
-            elif isinstance(flashcard, FillInTheBlank):
+            elif flashcard.type == FlashcardType.FILL_IN_BLANK:
                 return self._format_fill_in_blank_card(flashcard)
 
-            elif isinstance(flashcard, MultipleChoice):
+            elif flashcard.type == FlashcardType.MULTIPLE_CHOICE:
                 return self._format_multiple_choice_card(flashcard)
 
             else:
@@ -43,15 +38,16 @@ class QuestionFormatter:
             return "❌ Error displaying question", None
 
     def _format_two_sided_card(
-        self, flashcard: TwoSidedCard
+        self, flashcard: Flashcard
     ) -> Tuple[str, Optional[Any]]:
         """Format a two-sided flashcard."""
-        text = f"📝 *Two-sided Card*\n\n{flashcard.front}"
+        front = flashcard.content.get('front', '')
+        text = f"📝 *Two-sided Card*\n\n{front}"
         keyboard = self.keyboard_builder.create_edit_delete_keyboard(flashcard)
         return text, keyboard
 
     def _format_fill_in_blank_card(
-        self, flashcard: FillInTheBlank
+        self, flashcard: Flashcard
     ) -> Tuple[str, Optional[Any]]:
         """Format a fill-in-the-blank flashcard."""
         question = flashcard.get_question()
@@ -77,11 +73,12 @@ class QuestionFormatter:
         return text, keyboard
 
     def _format_multiple_choice_card(
-        self, flashcard: MultipleChoice
+        self, flashcard: Flashcard
     ) -> Tuple[str, Optional[Any]]:
         """Format a multiple choice flashcard."""
         question = flashcard.get_question()
-        choice_type = "multiple answers" if flashcard.allow_multiple else "one answer"
+        allow_multiple = flashcard.content.get('allow_multiple', False)
+        choice_type = "multiple answers" if allow_multiple else "one answer"
         text = f"📝 *Multiple Choice* (select {choice_type})\n\n{question}"
 
         # Create inline keyboard with options and edit/delete buttons

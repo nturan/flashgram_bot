@@ -1,10 +1,9 @@
 """Tests for base flashcard generator."""
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 from app.my_graph.generators.base_generator import BaseGenerator
-from app.models.flashcards import FillInTheBlank, TwoSidedCard, MultipleChoice
 
 
 class TestBaseGenerator:
@@ -16,18 +15,18 @@ class TestBaseGenerator:
 
     def test_init(self):
         """Test BaseGenerator initialization."""
-        assert self.generator.sentence_generator is not None
-        assert self.generator.text_processor is not None
         assert self.generator.suffix_extractor is not None
         assert self.generator.form_analyzer is not None
 
-    def test_create_fill_in_gap_card_with_pre_generated_sentence(self):
+    @patch('app.my_graph.generators.base_generator.FillInTheBlank')
+    def test_create_fill_in_gap_card_with_pre_generated_sentence(self, mock_fill_in_blank):
         """Test creating fill-in-gap card with pre-generated sentence."""
-        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract, \
-             patch.object(self.generator.text_processor, 'create_sentence_with_blank') as mock_create_blank:
+        mock_card = MagicMock()
+        mock_fill_in_blank.return_value = mock_card
+        
+        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract:
             
             mock_extract.return_value = ("дом", "а")
-            mock_create_blank.return_value = "В ___а живет семья."
             
             card = self.generator.create_fill_in_gap_card(
                 dictionary_form="дом",
@@ -39,28 +38,32 @@ class TestBaseGenerator:
                 pre_generated_sentence="В дома живет семья."
             )
             
-            assert isinstance(card, FillInTheBlank)
-            assert card.text_with_blanks == "В ___а живет семья."
-            assert card.answers == ["а"]
-            assert card.case_sensitive is False
-            assert "fill_in_gap" in card.tags
-            assert "suffix" in card.tags
-            assert "russian" in card.tags
-            assert "noun" in card.tags
-            assert card.title == "дом - GEN singular (gap fill)"
-            assert card.metadata["form_description"] == "GEN singular"
-            assert card.metadata["dictionary_form"] == "дом"
-            assert card.metadata["grammatical_key"] == "genitive"
-
-    def test_create_fill_in_gap_card_generate_sentence(self):
-        """Test creating fill-in-gap card with sentence generation."""
-        with patch.object(self.generator.sentence_generator, 'generate_example_sentence') as mock_generate, \
-             patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract, \
-             patch.object(self.generator.text_processor, 'create_sentence_with_blank') as mock_create_blank:
+            # Verify the FillInTheBlank constructor was called with correct arguments
+            mock_fill_in_blank.assert_called_once_with(
+                user_id=1,
+                text_with_blanks="В дом___ живет семья.",
+                answers=["а"],
+                case_sensitive=False,
+                tags=["russian", "noun", "fill_in_gap", "suffix"],
+                title="дом - GEN singular (gap fill)",
+                metadata={
+                    "form_description": "GEN singular",
+                    "dictionary_form": "дом",
+                    "grammatical_key": "genitive",
+                },
+            )
             
-            mock_generate.return_value = "Я вижу красивую собаку."
+            assert card == mock_card
+
+    @patch('app.my_graph.generators.base_generator.FillInTheBlank')
+    def test_create_fill_in_gap_card_generate_sentence(self, mock_fill_in_blank):
+        """Test creating fill-in-gap card without pre-generated sentence (fallback)."""
+        mock_card = MagicMock()
+        mock_fill_in_blank.return_value = mock_card
+        
+        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract:
+            
             mock_extract.return_value = ("собак", "у")
-            mock_create_blank.return_value = "Я вижу красивую собак___."
             
             card = self.generator.create_fill_in_gap_card(
                 dictionary_form="собака",
@@ -70,15 +73,29 @@ class TestBaseGenerator:
                 tags=["russian", "noun", "feminine"]
             )
             
-            assert isinstance(card, FillInTheBlank)
-            assert card.text_with_blanks == "Я вижу красивую собак___."
-            assert card.answers == ["у"]
-            assert card.metadata["grammatical_key"] == "ACC singular"
+            # Verify the FillInTheBlank constructor was called with template fallback
+            mock_fill_in_blank.assert_called_once_with(
+                user_id=1,
+                text_with_blanks="Пример с собак___.",
+                answers=["у"],
+                case_sensitive=False,
+                tags=["russian", "noun", "feminine", "fill_in_gap", "suffix"],
+                title="собака - ACC singular (gap fill)",
+                metadata={
+                    "form_description": "ACC singular",
+                    "dictionary_form": "собака",
+                    "grammatical_key": "ACC singular",
+                },
+            )
             
-            mock_generate.assert_called_once_with("собака", "собаку", "ACC singular", "noun")
+            assert card == mock_card
 
-    def test_create_two_sided_card(self):
+    @patch('app.my_graph.generators.base_generator.TwoSidedCard')
+    def test_create_two_sided_card(self, mock_two_sided_card):
         """Test creating two-sided flashcard."""
+        mock_card = MagicMock()
+        mock_two_sided_card.return_value = mock_card
+        
         card = self.generator.create_two_sided_card(
             front="What is the gender of 'дом'?",
             back="masculine",
@@ -86,11 +103,15 @@ class TestBaseGenerator:
             title="дом - gender"
         )
         
-        assert isinstance(card, TwoSidedCard)
-        assert card.front == "What is the gender of 'дом'?"
-        assert card.back == "masculine"
-        assert card.tags == ["russian", "noun", "gender"]
-        assert card.title == "дом - gender"
+        mock_two_sided_card.assert_called_once_with(
+            user_id=1,
+            front="What is the gender of 'дом'?",
+            back="masculine",
+            tags=["russian", "noun", "gender"],
+            title="дом - gender"
+        )
+        
+        assert card == mock_card
 
     def test_should_create_flashcard_valid_form(self):
         """Test should_create_flashcard with valid form."""
@@ -130,13 +151,15 @@ class TestBaseGenerator:
         
         assert "Subclasses must implement generate_flashcards_from_grammar" in str(exc_info.value)
 
-    def test_create_fill_in_gap_card_no_grammatical_key(self):
+    @patch('app.my_graph.generators.base_generator.FillInTheBlank')
+    def test_create_fill_in_gap_card_no_grammatical_key(self, mock_fill_in_blank):
         """Test creating fill-in-gap card without grammatical key."""
-        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract, \
-             patch.object(self.generator.text_processor, 'create_sentence_with_blank') as mock_create_blank:
+        mock_card = MagicMock()
+        mock_fill_in_blank.return_value = mock_card
+        
+        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract:
             
-            mock_extract.return_value = ("стол", "а")
-            mock_create_blank.return_value = "На стол___ лежит книга."
+            mock_extract.return_value = ("стол", "е")
             
             card = self.generator.create_fill_in_gap_card(
                 dictionary_form="стол",
@@ -147,15 +170,26 @@ class TestBaseGenerator:
                 pre_generated_sentence="На столе лежит книга."
             )
             
-            assert card.metadata["grammatical_key"] == "PREP singular"  # Uses form_description
+            # Verify grammatical_key uses form_description when not provided
+            expected_metadata = {
+                "form_description": "PREP singular",
+                "dictionary_form": "стол",
+                "grammatical_key": "PREP singular"
+            }
+            mock_fill_in_blank.assert_called_once()
+            call_args = mock_fill_in_blank.call_args
+            assert call_args.kwargs['metadata'] == expected_metadata
+            assert card == mock_card
 
-    def test_create_fill_in_gap_card_with_grammatical_key(self):
+    @patch('app.my_graph.generators.base_generator.FillInTheBlank')
+    def test_create_fill_in_gap_card_with_grammatical_key(self, mock_fill_in_blank):
         """Test creating fill-in-gap card with explicit grammatical key."""
-        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract, \
-             patch.object(self.generator.text_processor, 'create_sentence_with_blank') as mock_create_blank:
+        mock_card = MagicMock()
+        mock_fill_in_blank.return_value = mock_card
+        
+        with patch.object(self.generator.suffix_extractor, 'extract_suffix') as mock_extract:
             
             mock_extract.return_value = ("кот", "а")
-            mock_create_blank.return_value = "Я вижу кот___."
             
             card = self.generator.create_fill_in_gap_card(
                 dictionary_form="кот",
@@ -167,10 +201,23 @@ class TestBaseGenerator:
                 pre_generated_sentence="Я вижу кота."
             )
             
-            assert card.metadata["grammatical_key"] == "accusative_case"
+            # Verify grammatical_key uses provided value
+            expected_metadata = {
+                "form_description": "ACC singular",
+                "dictionary_form": "кот",
+                "grammatical_key": "accusative_case"
+            }
+            mock_fill_in_blank.assert_called_once()
+            call_args = mock_fill_in_blank.call_args
+            assert call_args.kwargs['metadata'] == expected_metadata
+            assert card == mock_card
 
-    def test_create_multiple_choice_card(self):
+    @patch('app.my_graph.generators.base_generator.MultipleChoice')
+    def test_create_multiple_choice_card(self, mock_multiple_choice):
         """Test creating multiple choice flashcard."""
+        mock_card = MagicMock()
+        mock_multiple_choice.return_value = mock_card
+        
         card = self.generator.create_multiple_choice_card(
             question="What is the gender of 'дом'?",
             options=["masculine", "feminine", "neuter"],
@@ -180,10 +227,14 @@ class TestBaseGenerator:
             allow_multiple=False
         )
         
-        assert isinstance(card, MultipleChoice)
-        assert card.question == "What is the gender of 'дом'?"
-        assert card.options == ["masculine", "feminine", "neuter"]
-        assert card.correct_indices == [0]
-        assert card.allow_multiple is False
-        assert card.tags == ["russian", "noun", "gender", "multiple_choice"]
-        assert card.title == "дом - gender"
+        mock_multiple_choice.assert_called_once_with(
+            user_id=1,
+            question="What is the gender of 'дом'?",
+            options=["masculine", "feminine", "neuter"],
+            correct_indices=[0],
+            allow_multiple=False,
+            tags=["russian", "noun", "gender", "multiple_choice"],
+            title="дом - gender",
+        )
+        
+        assert card == mock_card

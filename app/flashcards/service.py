@@ -4,7 +4,7 @@ import logging
 import random
 from typing import List, Optional, Tuple, Dict, Any
 
-from app.models.flashcards import FlashcardUnion, FlashcardType
+from app.models.flashcards import Flashcard, FlashcardType
 from app.flashcards.database import flashcard_db_v2
 from app.flashcards.validators import AnswerValidator
 from app.flashcards.formatters import QuestionFormatter
@@ -23,7 +23,7 @@ class FlashcardService:
         self.spaced_repetition = SpacedRepetitionAlgorithm()
         self.scheduler = ReviewScheduler()
 
-    def get_learning_session_flashcards(self, user_id: int, limit: int = 20) -> List[FlashcardUnion]:
+    def get_learning_session_flashcards(self, user_id: int, limit: int = 20) -> List[Flashcard]:
         """Get flashcards for a learning session."""
         try:
             # Get due flashcards first
@@ -61,19 +61,19 @@ class FlashcardService:
             return []
 
     def format_question_for_bot(
-        self, flashcard: FlashcardUnion
+        self, flashcard: Flashcard
     ) -> Tuple[str, Optional[Any]]:
         """Format a flashcard question for display in the Telegram bot."""
         return self.question_formatter.format_question_for_bot(flashcard)
 
     def check_answer(
-        self, flashcard: FlashcardUnion, user_input: str
+        self, flashcard: Flashcard, user_input: str
     ) -> Tuple[bool, str]:
         """Check if the user's answer is correct and return feedback."""
         return self.answer_validator.check_answer(flashcard, user_input)
 
     def update_flashcard_after_review(
-        self, user_id: int, flashcard: FlashcardUnion, is_correct: bool
+        self, user_id: int, flashcard: Flashcard, is_correct: bool
     ) -> bool:
         """Update flashcard statistics and spaced repetition data after review."""
         try:
@@ -162,7 +162,7 @@ class FlashcardService:
             return {}
 
     def get_session_statistics(
-        self, flashcards: List[FlashcardUnion]
+        self, flashcards: List[Flashcard]
     ) -> Dict[str, Any]:
         """Get statistics about a flashcard session."""
         return self.scheduler.get_session_statistics(flashcards)

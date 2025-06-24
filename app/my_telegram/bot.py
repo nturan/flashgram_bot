@@ -28,12 +28,8 @@ import json
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from app.flashcards import (
-    flashcard_service,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
-)
+from app.flashcards import flashcard_service
+from app.models.flashcards import Flashcard, FlashcardType
 from app.my_telegram.session import session_manager
 
 logger = logging.getLogger(__name__)
@@ -87,12 +83,9 @@ async def handle_callback_query(
                     # Verify this is the correct flashcard
                     if str(current_flashcard.id) == flashcard_id:
                         # Check the answer
-                        from app.models.flashcards import MultipleChoice
-
-                        if isinstance(current_flashcard, MultipleChoice):
-                            is_correct = (
-                                selected_option in current_flashcard.correct_indices
-                            )
+                        if current_flashcard.type == FlashcardType.MULTIPLE_CHOICE:
+                            correct_indices = current_flashcard.content.get('correct_indices', [])
+                            is_correct = selected_option in correct_indices
 
                             # Update session
                             session.total_questions += 1
@@ -106,16 +99,17 @@ async def handle_callback_query(
 
                             # Create feedback message
                             selected_letter = chr(65 + selected_option)
-                            selected_text = current_flashcard.options[selected_option]
+                            options = current_flashcard.content.get('options', [])
+                            selected_text = options[selected_option] if selected_option < len(options) else "Invalid option"
 
                             if is_correct:
                                 feedback = f"✅ Correct! You selected {selected_letter}. {selected_text}"
                             else:
-                                correct_indices = current_flashcard.correct_indices
+                                correct_indices = current_flashcard.content.get('correct_indices', [])
                                 correct_letters = [chr(65 + i) for i in correct_indices]
+                                options = current_flashcard.content.get('options', [])
                                 correct_texts = [
-                                    current_flashcard.options[i]
-                                    for i in correct_indices
+                                    options[i] for i in correct_indices if i < len(options)
                                 ]
                                 feedback = f"❌ Incorrect. You selected {selected_letter}. {selected_text}\n"
                                 feedback += f"Correct answer: {', '.join(correct_letters)}. {', '.join(correct_texts)}"
@@ -261,7 +255,7 @@ async def handle_edit_flashcard(
     try:
         # Get the flashcard from database
         user_id = query.from_user.id
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
+        flashcard = await flashcard_service.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard:
             await query.edit_message_text("❌ Flashcard not found.")
@@ -274,23 +268,23 @@ async def handle_edit_flashcard(
         # Extract only the essential editable fields based on card type
         edit_data = {}
 
-        if isinstance(flashcard, TwoSidedCard):
+        if flashcard.type == FlashcardType.TWO_SIDED:
             edit_data = {
-                "front": flashcard.front,
-                "back": flashcard.back,
+                "front": flashcard.content.get("front", ""),
+                "back": flashcard.content.get("back", ""),
                 "title": flashcard.title,
             }
-        elif isinstance(flashcard, FillInTheBlank):
+        elif flashcard.type == FlashcardType.FILL_IN_BLANK:
             edit_data = {
-                "text_with_blanks": flashcard.text_with_blanks,
-                "answers": flashcard.answers,
+                "text_with_blanks": flashcard.content.get("text_with_blanks", ""),
+                "answers": flashcard.content.get("answers", []),
                 "title": flashcard.title,
             }
-        elif isinstance(flashcard, MultipleChoice):
+        elif flashcard.type == FlashcardType.MULTIPLE_CHOICE:
             edit_data = {
-                "question": flashcard.question,
-                "options": flashcard.options,
-                "correct_indices": flashcard.correct_indices,
+                "question": flashcard.content.get("question", ""),
+                "options": flashcard.content.get("options", []),
+                "correct_indices": flashcard.content.get("correct_indices", []),
                 "title": flashcard.title,
             }
 
@@ -304,7 +298,7 @@ async def handle_edit_flashcard(
         buttons = []
 
         # Add regenerate sentence option for fill-in-blank cards
-        if isinstance(flashcard, FillInTheBlank):
+        if flashcard.type == FlashcardType.FILL_IN_BLANK:
             buttons.append(
                 [
                     InlineKeyboardButton(
@@ -350,7 +344,7 @@ async def handle_delete_flashcard(
     try:
         # Get the flashcard from database
         user_id = query.from_user.id
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
+        flashcard = await flashcard_service.get_flashcard_by_id(flashcard_id, user_id)
 
         if not flashcard:
             await query.edit_message_text("❌ Flashcard not found.")
@@ -400,10 +394,11 @@ async def handle_show_answer(
                 session.total_questions += 1
 
                 # Show the answer
-                if isinstance(current_flashcard, TwoSidedCard):
-                    answer_text = current_flashcard.back
-                elif isinstance(current_flashcard, FillInTheBlank):
-                    answer_text = ", ".join(current_flashcard.answers)
+                if current_flashcard.type == FlashcardType.TWO_SIDED:
+                    answer_text = current_flashcard.content.get("back", "")
+                elif current_flashcard.type == FlashcardType.FILL_IN_BLANK:
+                    answers = current_flashcard.content.get("answers", [])
+                    answer_text = ", ".join(answers)
                 else:
                     answer_text = "Answer not available"
 
@@ -453,7 +448,7 @@ async def handle_confirm_delete(
     """Confirm and execute flashcard deletion."""
     try:
         user_id = query.from_user.id
-        success = flashcard_service.db.delete_flashcard(flashcard_id, user_id)
+        success = await flashcard_service.delete_flashcard(flashcard_id, user_id)
 
         if success:
             await query.edit_message_text(
@@ -568,9 +563,9 @@ async def handle_regenerate_sentence(
     try:
         # Get the flashcard from database
         user_id = query.from_user.id
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
+        flashcard = await flashcard_service.get_flashcard_by_id(flashcard_id, user_id)
 
-        if not flashcard or not isinstance(flashcard, FillInTheBlank):
+        if not flashcard or flashcard.type != FlashcardType.FILL_IN_BLANK:
             await query.edit_message_text(
                 "❌ Error: Fill-in-blank flashcard not found."
             )
@@ -666,9 +661,9 @@ async def regenerate_flashcard_sentence(
             return
             
         # Get the flashcard from database
-        flashcard = flashcard_service.db.get_flashcard_by_id(flashcard_id, user_id)
+        flashcard = await flashcard_service.get_flashcard_by_id(flashcard_id, user_id)
 
-        if not flashcard or not isinstance(flashcard, FillInTheBlank):
+        if not flashcard or flashcard.type != FlashcardType.FILL_IN_BLANK:
             message_text = "❌ Error: Fill-in-blank flashcard not found."
             if hasattr(update_or_query, "edit_message_text"):
                 await update_or_query.edit_message_text(message_text)
@@ -682,8 +677,8 @@ async def regenerate_flashcard_sentence(
         grammatical_key = metadata.get("grammatical_key", "grammatical form")
 
         # Get the target form from the current sentence
-        current_sentence = flashcard.text_with_blanks
-        answers = flashcard.answers
+        current_sentence = flashcard.content.get("text_with_blanks", "")
+        answers = flashcard.content.get("answers", [])
 
         # Try to reconstruct the target form
         if answers and len(answers) > 0:
@@ -732,7 +727,7 @@ async def regenerate_flashcard_sentence(
         # Update the flashcard in database
         updates = {"text_with_blanks": sentence_with_blank, "answers": [suffix]}
 
-        success = flashcard_service.db.update_flashcard(flashcard_id, user_id, updates)
+        success = await flashcard_service.update_flashcard(flashcard_id, user_id, updates)
 
         if success:
             # Clear regeneration mode using session manager
@@ -811,7 +806,7 @@ async def regenerate_flashcard_sentence(
                     current_fc = session.current_flashcard
                     if str(current_fc.id) == flashcard_id:
                         # Get updated flashcard and continue learning
-                        updated_flashcard = flashcard_service.db.get_flashcard_by_id(
+                        updated_flashcard = await flashcard_service.get_flashcard_by_id(
                             flashcard_id, user_id
                         )
                         if updated_flashcard:

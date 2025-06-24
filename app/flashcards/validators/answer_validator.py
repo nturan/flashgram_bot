@@ -2,12 +2,7 @@
 
 import logging
 from typing import Tuple, List
-from app.models.flashcards import (
-    FlashcardUnion,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
-)
+from app.models.flashcards import Flashcard, FlashcardType
 from .input_parser import InputParser
 
 logger = logging.getLogger(__name__)
@@ -20,20 +15,20 @@ class AnswerValidator:
         self.input_parser = InputParser()
 
     def check_answer(
-        self, flashcard: FlashcardUnion, user_input: str
+        self, flashcard: Flashcard, user_input: str
     ) -> Tuple[bool, str]:
         """
         Check if the user's answer is correct and return feedback.
         Returns (is_correct, feedback_message)
         """
         try:
-            if isinstance(flashcard, TwoSidedCard):
+            if flashcard.type == FlashcardType.TWO_SIDED:
                 return self._check_two_sided_answer(flashcard, user_input)
 
-            elif isinstance(flashcard, FillInTheBlank):
+            elif flashcard.type == FlashcardType.FILL_IN_BLANK:
                 return self._check_fill_in_blank_answer(flashcard, user_input)
 
-            elif isinstance(flashcard, MultipleChoice):
+            elif flashcard.type == FlashcardType.MULTIPLE_CHOICE:
                 return self._check_multiple_choice_answer(flashcard, user_input)
 
             else:
@@ -44,49 +39,53 @@ class AnswerValidator:
             return False, "❌ Error checking answer"
 
     def _check_two_sided_answer(
-        self, flashcard: TwoSidedCard, user_input: str
+        self, flashcard: Flashcard, user_input: str
     ) -> Tuple[bool, str]:
         """Check answer for two-sided flashcard."""
         is_correct = flashcard.check_answer(user_input)
+        back = flashcard.content.get('back', '')
         feedback = (
             f"✅ Correct!"
             if is_correct
-            else f"❌ Incorrect. The answer is: {flashcard.back}"
+            else f"❌ Incorrect. The answer is: {back}"
         )
         return is_correct, feedback
 
     def _check_fill_in_blank_answer(
-        self, flashcard: FillInTheBlank, user_input: str
+        self, flashcard: Flashcard, user_input: str
     ) -> Tuple[bool, str]:
         """Check answer for fill-in-the-blank flashcard."""
         # Parse user input for multiple blanks
+        answers = flashcard.content.get('answers', [])
         user_answers = self.input_parser.parse_fill_in_blank_answer(
-            user_input, flashcard.get_blank_count()
+            user_input, len(answers)
         )
         is_correct = flashcard.check_answer(user_answers)
 
         if is_correct:
             feedback = "✅ Correct!"
         else:
-            correct_answers = ", ".join(flashcard.answers)
+            correct_answers = ", ".join(answers)
             feedback = f"❌ Incorrect. The correct answers are: {correct_answers}"
 
         return is_correct, feedback
 
     def _check_multiple_choice_answer(
-        self, flashcard: MultipleChoice, user_input: str
+        self, flashcard: Flashcard, user_input: str
     ) -> Tuple[bool, str]:
         """Check answer for multiple choice flashcard."""
         # Parse user input for multiple choice
+        options = flashcard.content.get('options', [])
+        correct_indices = flashcard.content.get('correct_indices', [])
         selected_indices = self.input_parser.parse_multiple_choice_answer(
-            user_input, len(flashcard.options)
+            user_input, len(options)
         )
         is_correct = flashcard.check_answer(selected_indices)
 
         if is_correct:
             feedback = "✅ Correct!"
         else:
-            correct_letters = flashcard.get_correct_letters()
+            correct_letters = [chr(65 + i) for i in correct_indices]
             correct_str = ", ".join(correct_letters)
             feedback = f"❌ Incorrect. The correct answer{'s' if len(correct_letters) > 1 else ''}: {correct_str}"
 

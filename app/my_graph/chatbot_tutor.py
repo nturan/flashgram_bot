@@ -1,5 +1,6 @@
 """Conversational Russian tutor chatbot using LangGraph with tools."""
 
+import asyncio
 import json
 import logging
 from typing import List, Dict, Optional, TypedDict, Literal, Union, Any
@@ -149,7 +150,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             return correct_multilingual_mistakes_impl(mixed_text)
 
         @tool
-        def generate_flashcards_from_analysis(
+        async def generate_flashcards_from_analysis(
             analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
             focus_areas: Optional[List[str]] = None,
             word: Optional[str] = None,
@@ -166,7 +167,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             Returns:
                 Dictionary with generated flashcards and count
             """
-            return generate_flashcards_from_analysis_impl(
+            return await generate_flashcards_from_analysis_impl(
                 analysis_data, focus_areas, word, user_id
             )
 
@@ -311,7 +312,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             )
             return {**state, "messages": current_messages + [error_message]}
 
-    def _execute_tools_node(self, state: ChatbotState) -> ChatbotState:
+    async def _execute_tools_node(self, state: ChatbotState) -> ChatbotState:
         """Execute any tools that were called by the AI."""
         try:
             messages = state.get("messages", [])
@@ -357,7 +358,7 @@ Always explain what you're doing and ask for user confirmation before creating f
                 for tool in self.tools:
                     if tool.name == tool_name:
                         try:
-                            tool_result = tool.invoke(tool_args)
+                            tool_result = await tool.ainvoke(tool_args)
                             logger.info(
                                 f"Executed tool {tool_name} with result: {tool_result}"
                             )
@@ -408,7 +409,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             return "tools"
         return "respond"
 
-    def chat(
+    async def chat(
         self,
         user_message: str,
         conversation_history: Optional[List[BaseMessage]] = None,
@@ -440,7 +441,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             }
 
             # Execute the graph
-            result = self.graph.invoke(initial_state)
+            result = await self.graph.ainvoke(initial_state)
 
             # Extract the final AI response
             final_messages = result.get("messages", [])

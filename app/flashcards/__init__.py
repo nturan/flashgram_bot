@@ -1,32 +1,31 @@
 # Flashcard models and utilities
 
 from app.models.flashcards import (
-    BaseFlashcard,
-    TwoSidedCard,
-    FillInTheBlank,
-    MultipleChoice,
+    Flashcard,
     FlashcardType,
     DifficultyLevel,
-    FlashcardUnion,
-    create_flashcard_from_dict,
+    create_two_sided_card,
+    create_fill_in_blank_card,
+    create_multiple_choice_card,
 )
 from .database import FlashcardDatabaseV2, flashcard_db_v2
-from .service import FlashcardService, flashcard_service
+from .service import FlashcardService as LegacyFlashcardService, flashcard_service as legacy_flashcard_service
+from app.services.flashcard_service import FlashcardService, flashcard_service
 
 __all__ = [
     # Models
-    "BaseFlashcard",
-    "TwoSidedCard",
-    "FillInTheBlank",
-    "MultipleChoice",
+    "Flashcard",
     "FlashcardType",
     "DifficultyLevel",
-    "FlashcardUnion",
-    "create_flashcard_from_dict",
-    # Database
+    "create_two_sided_card",
+    "create_fill_in_blank_card",
+    "create_multiple_choice_card",
+    # Database (legacy - for migration)
     "FlashcardDatabaseV2",
     "flashcard_db_v2",
-    # Service
-    "FlashcardService",
-    "flashcard_service",
+    # Services
+    "FlashcardService",  # Modern Beanie service
+    "flashcard_service",  # Modern Beanie service instance (from app.services)
+    "LegacyFlashcardService",  # Legacy service
+    "legacy_flashcard_service",  # Legacy service instance
 ]

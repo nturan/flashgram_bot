@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
-from app.models.flashcards import FlashcardUnion, DifficultyLevel
+from app.models.flashcards import Flashcard, DifficultyLevel
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,8 @@ class ReviewScheduler:
     """Manages scheduling and prioritization of flashcard reviews."""
 
     def prioritize_flashcards_for_session(
-        self, flashcards: List[FlashcardUnion], target_count: int
-    ) -> List[FlashcardUnion]:
+        self, flashcards: List[Flashcard], target_count: int
+    ) -> List[Flashcard]:
         """
         Prioritize flashcards for a learning session based on various factors.
 
@@ -36,7 +36,7 @@ class ReviewScheduler:
             logger.error(f"Error prioritizing flashcards: {e}")
             return flashcards[:target_count]
 
-    def _get_priority_score(self, flashcard: FlashcardUnion) -> float:
+    def _get_priority_score(self, flashcard: Flashcard) -> float:
         """Calculate priority score for a flashcard."""
         try:
             score = 0.0
@@ -76,7 +76,7 @@ class ReviewScheduler:
             return 0.0
 
     def get_session_statistics(
-        self, flashcards: List[FlashcardUnion]
+        self, flashcards: List[Flashcard]
     ) -> Dict[str, Any]:
         """Get statistics about a set of flashcards for session planning."""
         try:
