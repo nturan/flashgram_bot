@@ -21,6 +21,7 @@ from app.my_telegram.handlers import (
     handle_message,
 )
 from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
+from app.my_telegram.middleware.user_middleware import ensure_user_exists
 from app.config import settings
 from pydantic import SecretStr
 
@@ -891,6 +892,9 @@ def init_application(token: str) -> Application:
 
     # Create the Application
     application = Application.builder().token(token).build()
+
+    # Add user middleware first (highest priority group)
+    application.add_handler(TypeHandler(Update, ensure_user_exists), group=-1)
 
     # Add command handlers
     application.add_handler(CommandHandler("start", start))
