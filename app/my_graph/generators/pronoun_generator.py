@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Any, Dict
+from beanie import PydanticObjectId
 from app.grammar.russian import Pronoun
 from .base_generator import BaseGenerator
 
@@ -16,7 +17,7 @@ class PronounGenerator(BaseGenerator):
         pronoun: Pronoun,
         word_type: str = "pronoun",
         generated_sentences: Dict[str, str] = None,
-        user_id: int = 1,
+        user_id: PydanticObjectId,
     ) -> List[Any]:
         """Generate flashcards for a Russian pronoun."""
         if generated_sentences is None:

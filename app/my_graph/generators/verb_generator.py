@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Any, Dict
+from beanie import PydanticObjectId
 from app.grammar.russian import Verb
 from app.models.flashcards import Flashcard, create_multiple_choice_card
 from .base_generator import BaseGenerator
@@ -17,7 +18,7 @@ class VerbGenerator(BaseGenerator):
         verb: Verb,
         word_type: str = "verb",
         generated_sentences: Dict[str, str] = None,
-        user_id: int = 1,
+        user_id: PydanticObjectId,
     ) -> List[Any]:
         """Generate flashcards for a Russian verb."""
         if generated_sentences is None:
