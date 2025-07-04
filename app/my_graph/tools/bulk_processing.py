@@ -2,12 +2,13 @@
 
 import logging
 from typing import Dict, Any, Optional
+from beanie import PydanticObjectId
 
 logger = logging.getLogger(__name__)
 
 
 def process_bulk_text_for_flashcards_impl(
-    text: str, user_id: Optional[int] = None
+    text: str, user_id: Optional[PydanticObjectId] = None
 ) -> Dict[str, Any]:
     """Implementation for bulk text processing tool."""
     try:
@@ -16,7 +17,7 @@ def process_bulk_text_for_flashcards_impl(
 
         # Use a default user_id if not provided (for testing)
         if user_id is None:
-            user_id = 0
+            user_id = None  # Let bulk processor handle None user_id
 
         # Start bulk processing
         job_id = bulk_processor.start_bulk_processing(text, user_id)
@@ -38,7 +39,7 @@ def process_bulk_text_for_flashcards_impl(
 
 
 def check_bulk_processing_status_impl(
-    job_id: Optional[str] = None, user_id: Optional[int] = None
+    job_id: Optional[str] = None, user_id: Optional[PydanticObjectId] = None
 ) -> Dict[str, Any]:
     """Implementation for bulk processing status check tool."""
     try:
