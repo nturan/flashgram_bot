@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Any
+from beanie import PydanticObjectId
 from app.models.flashcards import (
     Flashcard,
     create_fill_in_blank_card,
@@ -29,7 +30,7 @@ class BaseGenerator:
         tags: List[str],
         grammatical_key: str = None,
         pre_generated_sentence: str = None,
-        user_id: int = 1,
+        user_id: PydanticObjectId,
     ) -> Flashcard:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
         
@@ -66,7 +67,7 @@ class BaseGenerator:
         )
 
     def create_two_sided_card(
-        self, front: str, back: str, tags: List[str], title: str, user_id: int = 1
+        self, front: str, back: str, tags: List[str], title: str, user_id: PydanticObjectId
     ) -> Flashcard:
         """Create a two-sided flashcard."""
         return create_two_sided_card(user_id=user_id, front=front, back=back, tags=tags, title=title)
@@ -79,7 +80,7 @@ class BaseGenerator:
         tags: List[str],
         title: str,
         allow_multiple: bool = False,
-        user_id: int = 1,
+        user_id: PydanticObjectId,
     ) -> Flashcard:
         """Create a multiple choice flashcard."""
         return create_multiple_choice_card(

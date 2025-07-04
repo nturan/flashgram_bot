@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Any, Dict
+from beanie import PydanticObjectId
 from app.flashcards import flashcard_service
 from app.grammar.russian import Noun, Adjective, Verb, Pronoun, Number
 from app.my_graph.generators import (
@@ -31,7 +32,7 @@ class FlashcardGenerator:
         grammar_obj: Any,
         word_type: str,
         generated_sentences: Dict[str, str] = None,
-        user_id: int = 1,
+        user_id: PydanticObjectId,
     ) -> List[Any]:
         """
         Generate flashcards from a grammar object (Noun, Adjective, Verb, Pronoun, or Number).
@@ -75,7 +76,7 @@ class FlashcardGenerator:
 
         return flashcards
 
-    async def save_flashcards_to_database(self, user_id: int, flashcards: List[Any]) -> int:
+    async def save_flashcards_to_database(self, user_id: PydanticObjectId, flashcards: List[Any]) -> int:
         """
         Save generated flashcards to the database.
 
