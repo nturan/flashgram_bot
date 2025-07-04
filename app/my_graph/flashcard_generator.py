@@ -31,8 +31,8 @@ class FlashcardGenerator:
         self,
         grammar_obj: Any,
         word_type: str,
-        generated_sentences: Dict[str, str] = None,
         user_id: PydanticObjectId,
+        generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """
         Generate flashcards from a grammar object (Noun, Adjective, Verb, Pronoun, or Number).
@@ -50,23 +50,23 @@ class FlashcardGenerator:
         try:
             if isinstance(grammar_obj, Noun):
                 flashcards = self.noun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences, user_id
+                    grammar_obj, word_type, user_id, generated_sentences
                 )
             elif isinstance(grammar_obj, Adjective):
                 flashcards = self.adjective_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences, user_id
+                    grammar_obj, word_type, user_id, generated_sentences
                 )
             elif isinstance(grammar_obj, Verb):
                 flashcards = self.verb_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences, user_id
+                    grammar_obj, word_type, user_id, generated_sentences
                 )
             elif isinstance(grammar_obj, Pronoun):
                 flashcards = self.pronoun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences, user_id
+                    grammar_obj, word_type, user_id, generated_sentences
                 )
             elif isinstance(grammar_obj, Number):
                 flashcards = self.number_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, generated_sentences, user_id
+                    grammar_obj, word_type, user_id, generated_sentences
                 )
             else:
                 logger.warning(f"Unknown grammar object type: {type(grammar_obj)}")
