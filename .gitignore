@@ -175,3 +175,4 @@ cython_debug/
 /examples/
 dictionaries/ru_RU_utf8.aff:Zone.Identifier
 dictionaries/ru_RU_utf8.dic:Zone.Identifier
+/.idea/.gitignore
