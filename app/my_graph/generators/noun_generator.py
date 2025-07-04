@@ -16,8 +16,8 @@ class NounGenerator(BaseGenerator):
         self,
         noun: Noun,
         word_type: str = "noun",
-        generated_sentences: Dict[str, str] = None,
         user_id: PydanticObjectId,
+        generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian noun."""
         flashcards = []

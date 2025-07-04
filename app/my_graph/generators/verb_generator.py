@@ -17,8 +17,8 @@ class VerbGenerator(BaseGenerator):
         self,
         verb: Verb,
         word_type: str = "verb",
-        generated_sentences: Dict[str, str] = None,
         user_id: PydanticObjectId,
+        generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian verb."""
         if generated_sentences is None:

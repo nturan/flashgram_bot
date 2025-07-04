@@ -16,8 +16,8 @@ class NumberGenerator(BaseGenerator):
         self,
         number: Number,
         word_type: str = "number",
-        generated_sentences: Dict[str, str] = None,
         user_id: PydanticObjectId,
+        generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian number."""
         if generated_sentences is None:
