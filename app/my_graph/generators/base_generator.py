@@ -28,9 +28,9 @@ class BaseGenerator:
         form_description: str,
         word_type: str,
         tags: List[str],
+        user_id: PydanticObjectId,
         grammatical_key: str = None,
         pre_generated_sentence: str = None,
-        user_id: PydanticObjectId,
     ) -> Flashcard:
         """Create a fill-in-the-gap flashcard for a grammatical form."""
         
@@ -79,8 +79,8 @@ class BaseGenerator:
         correct_indices: List[int],
         tags: List[str],
         title: str,
-        allow_multiple: bool = False,
         user_id: PydanticObjectId,
+        allow_multiple: bool = False,
     ) -> Flashcard:
         """Create a multiple choice flashcard."""
         return create_multiple_choice_card(
