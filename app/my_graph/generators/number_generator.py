@@ -15,8 +15,8 @@ class NumberGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         number: Number,
-        word_type: str = "number",
         user_id: PydanticObjectId,
+        word_type: str = "number",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian number."""

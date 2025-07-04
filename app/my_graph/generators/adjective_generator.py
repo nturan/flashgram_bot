@@ -15,8 +15,8 @@ class AdjectiveGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         adjective: Adjective,
-        word_type: str = "adjective",
         user_id: PydanticObjectId,
+        word_type: str = "adjective",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian adjective."""

@@ -15,8 +15,8 @@ class NounGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         noun: Noun,
-        word_type: str = "noun",
         user_id: PydanticObjectId,
+        word_type: str = "noun",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian noun."""

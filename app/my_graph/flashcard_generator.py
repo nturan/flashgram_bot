@@ -50,23 +50,23 @@ class FlashcardGenerator:
         try:
             if isinstance(grammar_obj, Noun):
                 flashcards = self.noun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, generated_sentences
+                    grammar_obj, user_id, word_type, generated_sentences
                 )
             elif isinstance(grammar_obj, Adjective):
                 flashcards = self.adjective_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, generated_sentences
+                    grammar_obj, user_id, word_type, generated_sentences
                 )
             elif isinstance(grammar_obj, Verb):
                 flashcards = self.verb_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, generated_sentences
+                    grammar_obj, user_id, word_type, generated_sentences
                 )
             elif isinstance(grammar_obj, Pronoun):
                 flashcards = self.pronoun_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, generated_sentences
+                    grammar_obj, user_id, word_type, generated_sentences
                 )
             elif isinstance(grammar_obj, Number):
                 flashcards = self.number_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, generated_sentences
+                    grammar_obj, user_id, word_type, generated_sentences
                 )
             else:
                 logger.warning(f"Unknown grammar object type: {type(grammar_obj)}")

@@ -137,7 +137,7 @@ async def generate_flashcards_from_analysis_impl(
             if grammar_obj and word_type:
                 # Generate flashcards
                 flashcards = flashcard_generator.generate_flashcards_from_grammar(
-                    grammar_obj, word_type, user_id, None
+                    grammar_obj, user_id, word_type, None
                 )
 
                 # Save to database

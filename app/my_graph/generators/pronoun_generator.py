@@ -15,8 +15,8 @@ class PronounGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         pronoun: Pronoun,
-        word_type: str = "pronoun",
         user_id: PydanticObjectId,
+        word_type: str = "pronoun",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian pronoun."""

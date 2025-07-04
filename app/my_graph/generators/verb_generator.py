@@ -16,8 +16,8 @@ class VerbGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         verb: Verb,
-        word_type: str = "verb",
         user_id: PydanticObjectId,
+        word_type: str = "verb",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """Generate flashcards for a Russian verb."""
