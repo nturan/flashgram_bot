@@ -32,7 +32,7 @@ class FlashcardService:
             logger.error(f"Error creating flashcard: {e}")
             return None
 
-    async def get_flashcard_by_id(self, flashcard_id: Union[str, PydanticObjectId], user_id: int) -> Optional[Flashcard]:
+    async def get_flashcard_by_id(self, flashcard_id: Union[str, PydanticObjectId], user_id: PydanticObjectId) -> Optional[Flashcard]:
         """Get a flashcard by ID for a specific user."""
         try:
             # Convert string ID to PydanticObjectId if needed
@@ -50,7 +50,7 @@ class FlashcardService:
 
     async def get_flashcards(
         self,
-        user_id: int,
+        user_id: PydanticObjectId,
         flashcard_type: Optional[FlashcardType] = None,
         tags: Optional[List[str]] = None,
         due_before: Optional[datetime] = None,
@@ -94,7 +94,7 @@ class FlashcardService:
     async def update_flashcard(
         self, 
         flashcard_id: Union[str, PydanticObjectId], 
-        user_id: int, 
+        user_id: PydanticObjectId, 
         updates: Dict[str, Any]
     ) -> bool:
         """Update a flashcard."""
@@ -118,7 +118,7 @@ class FlashcardService:
             logger.error(f"Error updating flashcard: {e}")
             return False
 
-    async def delete_flashcard(self, flashcard_id: Union[str, PydanticObjectId], user_id: int) -> bool:
+    async def delete_flashcard(self, flashcard_id: Union[str, PydanticObjectId], user_id: PydanticObjectId) -> bool:
         """Delete a flashcard."""
         try:
             flashcard = await self.get_flashcard_by_id(flashcard_id, user_id)
@@ -133,7 +133,7 @@ class FlashcardService:
             logger.error(f"Error deleting flashcard: {e}")
             return False
 
-    async def get_flashcard_count(self, user_id: int, flashcard_type: Optional[FlashcardType] = None) -> int:
+    async def get_flashcard_count(self, user_id: PydanticObjectId, flashcard_type: Optional[FlashcardType] = None) -> int:
         """Get the total number of flashcards for a user."""
         try:
             filters = [Flashcard.user_id == user_id]
@@ -153,12 +153,12 @@ class FlashcardService:
             logger.error(f"Error counting flashcards: {e}")
             return 0
 
-    async def get_due_flashcards(self, user_id: int, limit: int = 20) -> List[Flashcard]:
+    async def get_due_flashcards(self, user_id: PydanticObjectId, limit: int = 20) -> List[Flashcard]:
         """Get flashcards that are due for review."""
         now = datetime.now()
         return await self.get_flashcards(user_id=user_id, due_before=now, limit=limit)
 
-    async def get_tags(self, user_id: int) -> List[str]:
+    async def get_tags(self, user_id: PydanticObjectId) -> List[str]:
         """Get all unique tags used by a user."""
         try:
             all_tags = set()
@@ -179,7 +179,7 @@ class FlashcardService:
     async def update_flashcard_stats(
         self,
         flashcard_id: PydanticObjectId,
-        user_id: int,
+        user_id: PydanticObjectId,
         is_correct: bool,
         new_due_date: datetime,
         new_interval: int,
@@ -210,7 +210,7 @@ class FlashcardService:
             logger.error(f"Error updating flashcard stats: {e}")
             return False
 
-    async def get_dashboard_stats(self, user_id: int) -> Dict[str, int]:
+    async def get_dashboard_stats(self, user_id: PydanticObjectId) -> Dict[str, int]:
         """Get dashboard statistics for a user."""
         try:
             now = datetime.now()
@@ -263,7 +263,7 @@ class FlashcardService:
                 "mastered": 0,
             }
 
-    async def get_learning_session_flashcards(self, user_id: int, limit: int = 20) -> List[Flashcard]:
+    async def get_learning_session_flashcards(self, user_id: PydanticObjectId, limit: int = 20) -> List[Flashcard]:
         """Get flashcards for a learning session."""
         try:
             # Get due flashcards first
@@ -300,7 +300,7 @@ class FlashcardService:
             logger.error(f"Error getting learning session flashcards: {e}")
             return []
 
-    async def get_flashcard_stats(self, user_id: int) -> Dict[str, Any]:
+    async def get_flashcard_stats(self, user_id: PydanticObjectId) -> Dict[str, Any]:
         """Get statistics about the flashcard collection."""
         try:
             total_count = await self.get_flashcard_count(user_id)
@@ -328,7 +328,7 @@ class FlashcardService:
             logger.error(f"Error getting flashcard stats: {e}")
             return {}
 
-    async def get_dashboard_data(self, user_id: int) -> Dict[str, Any]:
+    async def get_dashboard_data(self, user_id: PydanticObjectId) -> Dict[str, Any]:
         """Get comprehensive dashboard data for the bot."""
         try:
             # Get basic dashboard stats
@@ -378,7 +378,7 @@ class FlashcardService:
         return self.answer_validator.check_answer(flashcard, user_input)
 
     async def update_flashcard_after_review(
-        self, user_id: int, flashcard: Flashcard, is_correct: bool
+        self, user_id: PydanticObjectId, flashcard: Flashcard, is_correct: bool
     ) -> bool:
         """Update flashcard statistics and spaced repetition data after review."""
         try:
