@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any, Optional, Union, List
+from beanie import PydanticObjectId
 
 from app.grammar.russian import (
     Noun,
@@ -21,7 +22,7 @@ async def generate_flashcards_from_analysis_impl(
     analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     focus_areas: Optional[List[str]] = None,
     word: Optional[str] = None,
-    user_id: Optional[int] = None,
+    user_id: Optional[PydanticObjectId] = None,
 ) -> Dict[str, Any]:
     """Implementation for flashcard generation tool."""
     try:
