@@ -1,6 +1,6 @@
 """Generalized flashcard model using JSON content for flexible rendering."""
 
-from beanie import Document
+from beanie import Document, PydanticObjectId
 from pydantic import Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -27,7 +27,7 @@ class Flashcard(Document):
     """Generalized flashcard model with JSON content for flexible rendering."""
 
     # Identification
-    user_id: int = Field(..., description="Telegram user ID who owns this flashcard")
+    user_id: PydanticObjectId = Field(..., description="User document ID who owns this flashcard")
 
     # Type and content
     type: FlashcardType = Field(..., description="Type of flashcard for rendering")
@@ -197,7 +197,7 @@ class Flashcard(Document):
 
 # Factory functions for creating specific flashcard types
 def create_two_sided_card(
-    user_id: int,
+    user_id: PydanticObjectId,
     front: str,
     back: str,
     title: Optional[str] = None,
@@ -219,7 +219,7 @@ def create_two_sided_card(
 
 
 def create_fill_in_blank_card(
-    user_id: int,
+    user_id: PydanticObjectId,
     text_with_blanks: str,
     answers: List[str],
     case_sensitive: bool = False,
@@ -243,7 +243,7 @@ def create_fill_in_blank_card(
 
 
 def create_multiple_choice_card(
-    user_id: int,
+    user_id: PydanticObjectId,
     question: str,
     options: List[str],
     correct_indices: List[int],
