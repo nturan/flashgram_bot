@@ -12,6 +12,7 @@ from app.common.telegram_utils import safe_send_markdown
 from .learning_handlers import process_answer
 from app.config import settings
 from app.services.user_service import user_service
+from app.models.users import User
 from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
@@ -140,11 +141,20 @@ async def process_chatbot_conversation(
             )
             return
 
+        # Get User document to pass User._id instead of telegram user ID
+        user = await User.find_by_telegram_id(user_id)
+        if not user:
+            await update.message.reply_text(
+                "❌ **User Not Found**\n\n"
+                "Please try using `/start` to initialize your account."
+            )
+            return
+
         # Get conversation history from session
         conversation_history = session.get_conversation_history()
 
-        # Process message through chatbot
-        result = await chatbot_tutor.chat(user_text, conversation_history, user_id)
+        # Process message through chatbot with User._id
+        result = await chatbot_tutor.chat(user_text, conversation_history, user.id)
 
         if result.get("success"):
             response = result.get("response", "I'm not sure how to respond to that.")
@@ -199,8 +209,14 @@ async def handle_chatbot_feedback(
         # Get user-specific chatbot
         chatbot_tutor = await get_user_chatbot(user_id)
         
+        # Get User document to pass User._id
+        user = await User.find_by_telegram_id(user_id)
+        if not user:
+            await update.message.reply_text("❌ User not found. Please use `/start` to initialize.")
+            return
+
         # Process feedback through chatbot
-        result = await chatbot_tutor.chat(user_text, user_id=user_id)
+        result = await chatbot_tutor.chat(user_text, user_id=user.id)
 
         if result.get("success"):
             response = result.get("response", "Thank you for the feedback!")
