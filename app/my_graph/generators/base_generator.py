@@ -52,7 +52,7 @@ class BaseGenerator:
         sentence_with_blank = sentence.replace(target_form, f"{stem}___")
 
         return create_fill_in_blank_card(
-            user_id=user_id,
+            telegram_user_id=user_id,
             text_with_blanks=sentence_with_blank,
             answers=[suffix],
             case_sensitive=False,
@@ -70,7 +70,7 @@ class BaseGenerator:
         self, front: str, back: str, tags: List[str], title: str, user_id: str
     ) -> Flashcard:
         """Create a two-sided flashcard."""
-        return create_two_sided_card(user_id=user_id, front=front, back=back, tags=tags, title=title)
+        return create_two_sided_card(telegram_user_id=user_id, front=front, back=back, tags=tags, title=title)
 
     def create_multiple_choice_card(
         self,
@@ -84,7 +84,7 @@ class BaseGenerator:
     ) -> Flashcard:
         """Create a multiple choice flashcard."""
         return create_multiple_choice_card(
-            user_id=user_id,
+            telegram_user_id=user_id,
             question=question,
             options=options,
             correct_indices=correct_indices,

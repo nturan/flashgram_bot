@@ -31,7 +31,7 @@ class FlashcardGenerator:
         self,
         grammar_obj: Any,
         word_type: str,
-        user_id: PydanticObjectId,
+        user_id: str,
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
         """
@@ -76,7 +76,7 @@ class FlashcardGenerator:
 
         return flashcards
 
-    async def save_flashcards_to_database(self, user_id: PydanticObjectId, flashcards: List[Any]) -> int:
+    async def save_flashcards_to_database(self, flashcards: List[Any]) -> int:
         """
         Save generated flashcards to the database.
 
@@ -90,8 +90,6 @@ class FlashcardGenerator:
 
         for flashcard in flashcards:
             try:
-                # Set user_id on the flashcard
-                flashcard.user_id = user_id
                 
                 flashcard_id = await self.service.create_flashcard(flashcard)
                 if flashcard_id:

@@ -20,7 +20,7 @@ from app.my_telegram.handlers import (
     finish_command,
     handle_message,
 )
-from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
+# from app.my_telegram.handlers.chatbot_handlers import set_chatbot_tutor
 from app.my_telegram.middleware.user_middleware import ensure_user_exists
 from app.config import settings
 from pydantic import SecretStr
@@ -864,10 +864,10 @@ async def regenerate_flashcard_sentence(
 def init_application(token: str) -> Application:
     """Start the bot with the chatbot system."""
     # Initialize chatbot system
-    chatbot = ConversationalRussianTutor(
-        api_key=SecretStr(settings.openai_api_key), model=settings.llm_model
-    )
-    set_chatbot_tutor(chatbot)
+    # chatbot = ConversationalRussianTutor(
+    #     user_id=user_id, api_key=SecretStr(settings.openai_api_key), model=settings.llm_model
+    # )
+    # set_chatbot_tutor(chatbot)
 
     # Initialize with user's configured model if available
     try:

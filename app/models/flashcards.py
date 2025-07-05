@@ -1,7 +1,7 @@
 """Generalized flashcard model using JSON content for flexible rendering."""
 
 from beanie import Document, PydanticObjectId
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -27,7 +27,9 @@ class Flashcard(Document):
     """Generalized flashcard model with JSON content for flexible rendering."""
 
     # Identification
-    user_id: PydanticObjectId = Field(..., description="User document ID who owns this flashcard")
+    user_id: Optional[PydanticObjectId] = Field(..., description="User document ID who owns this flashcard")    
+    telegram_user_id: Optional[str] = Field(None, description="Telegram user ID (will be converted to user_id)")
+
 
     # Type and content
     type: FlashcardType = Field(..., description="Type of flashcard for rendering")
@@ -76,6 +78,23 @@ class Flashcard(Document):
     class Settings:
         name = "flashcards"
 
+    @model_validator(mode='before')
+    @classmethod
+    def validate_user_identification(cls, data):
+        """Ensure either user_id or telegram_user_id is provided."""
+        if isinstance(data, dict):
+            user_id = data.get('user_id')
+            telegram_user_id = data.get('telegram_user_id')
+            
+            if not user_id and not telegram_user_id:
+                raise ValueError("Either user_id or telegram_user_id must be provided")
+            
+            # If both are provided, user_id takes precedence
+            if user_id and telegram_user_id:
+                data.pop('telegram_user_id', None)
+                
+        return data
+
     @field_validator('content')
     @classmethod
     def validate_content_structure(cls, v, info):
@@ -107,6 +126,31 @@ class Flashcard(Document):
                 raise ValueError("Multiple choice 'correct_indices' must be a list")
                 
         return v
+    
+    async def resolve_user_id(self):
+        """Resolve telegram_user_id to user_id if needed."""
+        if self.user_id is None and self.telegram_user_id is not None:
+            from users import User  # Import here to avoid circular imports
+            user = await User.find_by_telegram_id(self.telegram_user_id)
+            if user is None:
+                raise ValueError(f"User not found for telegram_user_id: {self.telegram_user_id}")
+            self.user_id = user.id
+            self.telegram_user_id = None  # Clear it since we have the user_id now
+
+    async def save(self, *args, **kwargs):
+        """Override save to resolve user_id from telegram_user_id if needed."""
+        await self.resolve_user_id()
+        return await super().save(*args, **kwargs)
+
+    async def insert(self, *args, **kwargs):
+        """Override insert to resolve user_id from telegram_user_id if needed."""
+        await self.resolve_user_id()
+        return await super().insert(*args, **kwargs)
+
+    async def replace(self, *args, **kwargs):
+        """Override replace to resolve user_id from telegram_user_id if needed."""
+        await self.resolve_user_id()
+        return await super().replace(*args, **kwargs)
 
     def get_question(self) -> str:
         """Get the question text for this card based on its type."""
@@ -197,7 +241,7 @@ class Flashcard(Document):
 
 # Factory functions for creating specific flashcard types
 def create_two_sided_card(
-    user_id: PydanticObjectId,
+    telegram_user_id: str,
     front: str,
     back: str,
     title: Optional[str] = None,
@@ -206,7 +250,7 @@ def create_two_sided_card(
 ) -> Flashcard:
     """Create a two-sided flashcard."""
     return Flashcard(
-        user_id=user_id,
+        telegram_user_id=telegram_user_id,
         type=FlashcardType.TWO_SIDED,
         title=title,
         content={
@@ -219,7 +263,7 @@ def create_two_sided_card(
 
 
 def create_fill_in_blank_card(
-    user_id: PydanticObjectId,
+    telegram_user_id: str,
     text_with_blanks: str,
     answers: List[str],
     case_sensitive: bool = False,
@@ -229,7 +273,7 @@ def create_fill_in_blank_card(
 ) -> Flashcard:
     """Create a fill-in-the-blank flashcard."""
     return Flashcard(
-        user_id=user_id,
+        telegram_user_id=telegram_user_id,
         type=FlashcardType.FILL_IN_BLANK,
         title=title,
         content={
@@ -243,7 +287,7 @@ def create_fill_in_blank_card(
 
 
 def create_multiple_choice_card(
-    user_id: PydanticObjectId,
+    telegram_user_id: str,
     question: str,
     options: List[str],
     correct_indices: List[int],
@@ -254,7 +298,7 @@ def create_multiple_choice_card(
 ) -> Flashcard:
     """Create a multiple choice flashcard."""
     return Flashcard(
-        user_id=user_id,
+        telegram_user_id=telegram_user_id,
         type=FlashcardType.MULTIPLE_CHOICE,
         title=title,
         content={

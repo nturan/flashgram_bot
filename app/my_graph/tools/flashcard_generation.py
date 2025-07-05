@@ -26,9 +26,6 @@ async def generate_flashcards_from_analysis_impl(
 ) -> Dict[str, Any]:
     """Implementation for flashcard generation tool."""
     try:
-        # Convert string user_id back to PydanticObjectId
-        if user_id:
-            user_id = PydanticObjectId(user_id)
         
         # Check if user_id is provided - required for multi-user support
         if user_id is None:
@@ -141,12 +138,11 @@ async def generate_flashcards_from_analysis_impl(
             if grammar_obj and word_type:
                 # Generate flashcards
                 flashcards = flashcard_generator.generate_flashcards_from_grammar(
-                    grammar_obj, user_id, word_type, None
+                    grammar_obj, word_type, user_id,  None
                 )
 
-                # Save to database
                 saved_count = await flashcard_generator.save_flashcards_to_database(
-                    user_id, flashcards
+                    flashcards
                 )
 
                 # TODO: Add word tracking functionality to modern FlashcardService

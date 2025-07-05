@@ -42,7 +42,6 @@ class ChatbotState(TypedDict):
 
     messages: List[BaseMessage]
     user_input: Optional[str]
-    user_id: Optional[int]
     # Tool execution results
     tool_results: Optional[Dict[str, Any]]
     # Context for ongoing tasks
@@ -54,10 +53,11 @@ class ChatbotState(TypedDict):
 class ConversationalRussianTutor:
     """A conversational Russian tutor chatbot using LangGraph with tools."""
 
-    def __init__(self, api_key: SecretStr, model: str = "gpt-4o"):
+    def __init__(self, user_id: int, api_key: SecretStr, model: str = "gpt-4o"):
         self.api_key = api_key
         self.default_model = model
 
+        self.user_id = str(user_id)
         # Create LLM with tool binding
         self.llm = ChatOpenAI(api_key=api_key, model=model)
 
@@ -333,7 +333,7 @@ Always explain what you're doing and ask for user confirmation before creating f
                 return {**state, "messages": messages}
 
             # Get user_id from state for tools that need it
-            user_id = state.get("user_id")
+            user_id = self.user_id
 
             # Execute the tool calls
             for tool_call in last_message.tool_calls:
@@ -415,7 +415,6 @@ Always explain what you're doing and ask for user confirmation before creating f
         self,
         user_message: str,
         conversation_history: Optional[List[BaseMessage]] = None,
-        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Process a user message and return the chatbot's response.
 
@@ -435,7 +434,6 @@ Always explain what you're doing and ask for user confirmation before creating f
             initial_state = {
                 "messages": messages,
                 "user_input": user_message,
-                "user_id": user_id,
                 "tool_results": None,
                 "current_analysis": None,
                 "pending_flashcards": None,

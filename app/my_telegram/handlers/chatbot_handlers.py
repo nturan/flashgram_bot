@@ -39,7 +39,7 @@ async def get_user_chatbot(user_id: int) -> ConversationalRussianTutor:
     if user_id not in user_chatbots:
         logger.info(f"Creating new chatbot for user {user_id} with model: {model}")
         user_chatbots[user_id] = ConversationalRussianTutor(
-            api_key=SecretStr(api_key), model=model
+            user_id, api_key=SecretStr(api_key), model=model
         )
     else:
         # Check if we need to update the API key or model
@@ -63,9 +63,9 @@ def clear_user_chatbot(user_id: int):
         logger.info(f"Cleared chatbot instance for user {user_id}")
 
 
-def set_chatbot_tutor(tutor: ConversationalRussianTutor):
-    """Legacy method for backward compatibility."""
-    logger.warning("set_chatbot_tutor is deprecated, using per-user chatbots")
+# def set_chatbot_tutor(tutor: ConversationalRussianTutor):
+#     """Legacy method for backward compatibility."""
+#     logger.warning("set_chatbot_tutor is deprecated, using per-user chatbots")
 
 
 def reinit_chatbot_with_model(model: str):
@@ -154,7 +154,7 @@ async def process_chatbot_conversation(
         conversation_history = session.get_conversation_history()
 
         # Process message through chatbot with User._id
-        result = await chatbot_tutor.chat(user_text, conversation_history, user.id)
+        result = await chatbot_tutor.chat(user_text, conversation_history)
 
         if result.get("success"):
             response = result.get("response", "I'm not sure how to respond to that.")
@@ -216,7 +216,7 @@ async def handle_chatbot_feedback(
             return
 
         # Process feedback through chatbot
-        result = await chatbot_tutor.chat(user_text, user_id=user.id)
+        result = await chatbot_tutor.chat(user_text)
 
         if result.get("success"):
             response = result.get("response", "Thank you for the feedback!")
