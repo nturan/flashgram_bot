@@ -155,7 +155,7 @@ Always explain what you're doing and ask for user confirmation before creating f
             analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
             focus_areas: Optional[List[str]] = None,
             word: Optional[str] = None,
-            user_id: Optional[PydanticObjectId] = None,
+            user_id: Optional[str] = None,
         ) -> Dict[str, Any]:
             """Generate flashcards from grammar analysis results.
 
@@ -204,7 +204,7 @@ Always explain what you're doing and ask for user confirmation before creating f
 
         @tool
         def process_bulk_text_for_flashcards(
-            text: str, user_id: Optional[PydanticObjectId] = None
+            text: str, user_id: Optional[str] = None
         ) -> Dict[str, Any]:
             """Process a large text or multiple sentences asynchronously to generate flashcards.
 
@@ -228,7 +228,7 @@ Always explain what you're doing and ask for user confirmation before creating f
 
         @tool
         def check_bulk_processing_status(
-            job_id: Optional[str] = None, user_id: Optional[PydanticObjectId] = None
+            job_id: Optional[str] = None, user_id: Optional[str] = None
         ) -> Dict[str, Any]:
             """Check the status of bulk text processing jobs.
 
@@ -352,7 +352,8 @@ Always explain what you're doing and ask for user confirmation before creating f
                     and user_id
                 ):
                     if "user_id" not in tool_args:
-                        tool_args["user_id"] = user_id
+                        # Convert PydanticObjectId to string for JSON serialization
+                        tool_args["user_id"] = str(user_id) if user_id else None
 
                 # Find and execute the tool
                 tool_result = None

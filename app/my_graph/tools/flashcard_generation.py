@@ -22,10 +22,14 @@ async def generate_flashcards_from_analysis_impl(
     analysis_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     focus_areas: Optional[List[str]] = None,
     word: Optional[str] = None,
-    user_id: Optional[PydanticObjectId] = None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Implementation for flashcard generation tool."""
     try:
+        # Convert string user_id back to PydanticObjectId
+        if user_id:
+            user_id = PydanticObjectId(user_id)
+        
         # Check if user_id is provided - required for multi-user support
         if user_id is None:
             return {
