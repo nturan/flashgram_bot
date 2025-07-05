@@ -15,7 +15,7 @@ class AdjectiveGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         adjective: Adjective,
-        user_id: PydanticObjectId,
+        user_id: str,
         word_type: str = "adjective",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
@@ -40,7 +40,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_masculine_forms(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for masculine adjective forms."""
         flashcards = []
@@ -62,7 +62,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_feminine_forms(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for feminine adjective forms."""
         flashcards = []
@@ -84,7 +84,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_neuter_forms(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for neuter adjective forms."""
         flashcards = []
@@ -106,7 +106,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_plural_forms(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for plural adjective forms."""
         flashcards = []
@@ -128,7 +128,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_short_forms(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for short adjective forms."""
         flashcards = []
@@ -157,7 +157,7 @@ class AdjectiveGenerator(BaseGenerator):
         return flashcards
 
     def _generate_comparison_flashcards(
-        self, adjective: Adjective, dictionary_form: str, user_id: int = 1
+        self, adjective: Adjective, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for comparative and superlative forms."""
         flashcards = []

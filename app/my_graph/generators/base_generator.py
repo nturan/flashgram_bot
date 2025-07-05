@@ -28,7 +28,7 @@ class BaseGenerator:
         form_description: str,
         word_type: str,
         tags: List[str],
-        user_id: PydanticObjectId,
+        user_id: str,
         grammatical_key: str = None,
         pre_generated_sentence: str = None,
     ) -> Flashcard:
@@ -67,7 +67,7 @@ class BaseGenerator:
         )
 
     def create_two_sided_card(
-        self, front: str, back: str, tags: List[str], title: str, user_id: PydanticObjectId
+        self, front: str, back: str, tags: List[str], title: str, user_id: str
     ) -> Flashcard:
         """Create a two-sided flashcard."""
         return create_two_sided_card(user_id=user_id, front=front, back=back, tags=tags, title=title)
@@ -79,7 +79,7 @@ class BaseGenerator:
         correct_indices: List[int],
         tags: List[str],
         title: str,
-        user_id: PydanticObjectId,
+        user_id: str,
         allow_multiple: bool = False,
     ) -> Flashcard:
         """Create a multiple choice flashcard."""

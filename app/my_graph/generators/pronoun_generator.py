@@ -15,7 +15,7 @@ class PronounGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         pronoun: Pronoun,
-        user_id: PydanticObjectId,
+        user_id: str,
         word_type: str = "pronoun",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
@@ -48,7 +48,7 @@ class PronounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_noun_like_forms(
-        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
+        self, pronoun: Pronoun, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for noun-like pronouns (personal pronouns)."""
         flashcards = []
@@ -90,7 +90,7 @@ class PronounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_adjective_like_forms(
-        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
+        self, pronoun: Pronoun, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for adjective-like pronouns (demonstrative, possessive)."""
         flashcards = []
@@ -166,7 +166,7 @@ class PronounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_special_forms(
-        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
+        self, pronoun: Pronoun, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for pronouns with special declension patterns."""
         flashcards = []
@@ -196,7 +196,7 @@ class PronounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_property_flashcards(
-        self, pronoun: Pronoun, dictionary_form: str, user_id: int = 1
+        self, pronoun: Pronoun, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for pronoun properties and characteristics."""
         flashcards = []

@@ -15,7 +15,7 @@ class NumberGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         number: Number,
-        user_id: PydanticObjectId,
+        user_id: str,
         word_type: str = "number",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
@@ -48,7 +48,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_one_type_forms(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for 'one' type numbers (один/одна/одно)."""
         flashcards = []
@@ -107,7 +107,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_simple_case_forms(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for numbers with simple case declension."""
         flashcards = []
@@ -131,7 +131,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_thousands_forms(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for thousands-type numbers (тысяча, миллион)."""
         flashcards = []
@@ -173,7 +173,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_compound_forms(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for compound numbers (двадцать один, etc.)."""
         flashcards = []
@@ -197,7 +197,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_special_forms(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for special/irregular numbers."""
         flashcards = []
@@ -221,7 +221,7 @@ class NumberGenerator(BaseGenerator):
         return flashcards
 
     def _generate_property_flashcards(
-        self, number: Number, dictionary_form: str, user_id: int = 1
+        self, number: Number, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for number properties and usage patterns."""
         flashcards = []

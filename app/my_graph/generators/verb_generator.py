@@ -16,7 +16,7 @@ class VerbGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         verb: Verb,
-        user_id: PydanticObjectId,
+        user_id: str,
         word_type: str = "verb",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
@@ -41,7 +41,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_aspect_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for verb aspect."""
         flashcards = []
@@ -117,7 +117,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_conjugation_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for verb conjugation patterns."""
         flashcards = []
@@ -141,7 +141,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_present_tense_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for present tense forms."""
         flashcards = []
@@ -172,7 +172,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_past_tense_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for past tense forms."""
         flashcards = []
@@ -201,7 +201,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_future_tense_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for future tense forms."""
         flashcards = []
@@ -232,7 +232,7 @@ class VerbGenerator(BaseGenerator):
         return flashcards
 
     def _generate_imperative_flashcards(
-        self, verb: Verb, dictionary_form: str, user_id: int = 1
+        self, verb: Verb, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for imperative forms."""
         flashcards = []

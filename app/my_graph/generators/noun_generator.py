@@ -15,7 +15,7 @@ class NounGenerator(BaseGenerator):
     def generate_flashcards_from_grammar(
         self,
         noun: Noun,
-        user_id: PydanticObjectId,
+        user_id: str,
         word_type: str = "noun",
         generated_sentences: Dict[str, str] = None,
     ) -> List[Any]:
@@ -43,7 +43,7 @@ class NounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_singular_forms(
-        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: int = 1
+        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: str
     ) -> List[Any]:
         """Generate flashcards for singular noun forms."""
         flashcards = []
@@ -71,7 +71,7 @@ class NounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_plural_forms(
-        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: int = 1
+        self, noun: Noun, dictionary_form: str, generated_sentences: Dict[str, str], user_id: str
     ) -> List[Any]:
         """Generate flashcards for plural noun forms."""
         flashcards = []
@@ -93,7 +93,7 @@ class NounGenerator(BaseGenerator):
         return flashcards
 
     def _generate_property_flashcards(
-        self, noun: Noun, dictionary_form: str, user_id: int = 1
+        self, noun: Noun, dictionary_form: str, user_id: str
     ) -> List[Any]:
         """Generate flashcards for noun properties (gender, animacy)."""
         flashcards = []
